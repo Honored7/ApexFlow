@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using cAlgo.API;
 using cAlgo.API.Internals;
@@ -8,7 +9,7 @@ using cAlgo.Indicators;
 
 namespace cAlgo.Robots
 {
-    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class ApexFlowExecutionBot : Robot
     {
         // ── Execution ──────────────────────────────────────────────
@@ -158,6 +159,7 @@ namespace cAlgo.Robots
         private DateTime _currentTradingDate;
         private bool _dailyLockTriggered;
         private double _startOfDayEquity;
+        private double _startingBalance;
         private readonly Dictionary<string, SymbolContext> _symbolContexts =
             new Dictionary<string, SymbolContext>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<long, TrailingStopEngine> _trailEngines =
@@ -222,6 +224,7 @@ namespace cAlgo.Robots
             _currentTradingDate = Server.TimeInUtc.Date;
             _dailyLockTriggered = false;
             _startOfDayEquity = Account.Equity;
+            _startingBalance = Account.Balance;
 
             Positions.Opened += OnPositionOpened;
             Positions.Closed += OnPositionClosed;
@@ -234,6 +237,57 @@ namespace cAlgo.Robots
         {
             Positions.Opened -= OnPositionOpened;
             Positions.Closed -= OnPositionClosed;
+
+            ExportResults();
+        }
+
+        private void ExportResults()
+        {
+            try
+            {
+                var closedTrades = History
+                    .Where(t => t.Label == TradeLabel)
+                    .OrderBy(t => t.ClosingTime)
+                    .Select(t => new TradeRecord
+                    {
+                        EntryTime = t.EntryTime,
+                        ExitTime = t.ClosingTime,
+                        Symbol = t.SymbolName,
+                        Direction = t.TradeType.ToString(),
+                        Lots = t.Quantity,
+                        EntryPrice = t.EntryPrice,
+                        ExitPrice = t.ClosingPrice,
+                        StopLoss = null, // HistoricalTrade has no SL/TP
+                        TakeProfit = null,
+                        Pips = t.Pips,
+                        NetProfit = t.NetProfit,
+                        GrossProfit = t.GrossProfit,
+                        Commissions = t.Commissions,
+                        Swap = t.Swap,
+                        BalanceAfter = t.Balance,
+                        Label = t.Label
+                    })
+                    .ToList();
+
+                if (closedTrades.Count == 0)
+                {
+                    Print("[Export] No trades to export.");
+                    return;
+                }
+
+                string csvPath = ResultsExporter.ExportTrades(
+                    closedTrades, Account.Balance, Account.Equity, TradeLabel);
+
+                string jsonPath = ResultsExporter.ExportSummary(
+                    closedTrades, Account.Balance, Account.Equity, _startingBalance, TradeLabel);
+
+                Print("[Export] CSV:  {0}", csvPath);
+                Print("[Export] JSON: {0}", jsonPath);
+            }
+            catch (Exception ex)
+            {
+                Print("[Export] Failed: {0}", ex.Message);
+            }
         }
 
         private void OnPositionOpened(PositionOpenedEventArgs args)

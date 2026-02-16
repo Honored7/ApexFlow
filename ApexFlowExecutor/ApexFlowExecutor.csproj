@@ -21,6 +21,7 @@
     <Compile Include="..\ApexFlowSMC\AdaptiveRegimeEngine.cs" Link="AdaptiveRegimeEngine.cs" />
     <Compile Include="..\ApexFlowSMC\RiskProfileEngine.cs" Link="RiskProfileEngine.cs" />
     <Compile Include="..\ApexFlowSMC\TrailingStopEngine.cs" Link="TrailingStopEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\ResultsExporter.cs" Link="ResultsExporter.cs" />
   </ItemGroup>
 
   <Target Name="PostBuildDeployRobotArtifacts" AfterTargets="_AlgoBuildAfterBuild">

@@ -14,3 +14,7 @@
 # Logs / temp
 *.log
 *.tmp
+
+# Results — keep JSON summaries, ignore large CSVs
+results/*.csv
+!results/*.json
