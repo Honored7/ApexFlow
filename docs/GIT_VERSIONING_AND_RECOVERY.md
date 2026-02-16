@@ -21,6 +21,12 @@ This workspace includes scripts for frequent checkpoints and fast rollback:
 - `scripts/setup_git_recovery.ps1`: initialize hooks + baseline branches
 - `scripts/checkpoint.ps1`: auto-commit local checkpoint with timestamp
 - `scripts/restore_last_stable.ps1`: reset to latest tagged stable release
+- `scripts/generate_changelog.ps1`: generate standardized version notes into `CHANGELOG.md`
+- `scripts/create_release.ps1`: generate changelog + tag and optionally push
+
+GitHub workflow:
+
+- `.github/workflows/release.yml`: publishes GitHub Release automatically on `v*.*.*` tag push
 
 ## Recommended Workflow
 
@@ -32,6 +38,17 @@ This workspace includes scripts for frequent checkpoints and fast rollback:
    - `git tag -a v0.1.0 -m "stable baseline"`
 4. Recover if needed:
    - `pwsh -ExecutionPolicy Bypass -File .\scripts\restore_last_stable.ps1`
+
+## Automated Release Flow
+
+1. Generate changelog entry manually:
+   - `pwsh -ExecutionPolicy Bypass -File .\scripts\generate_changelog.ps1 -Version 0.1.1`
+2. Create release tag (local):
+   - `pwsh -ExecutionPolicy Bypass -File .\scripts\create_release.ps1 -Version 0.1.1`
+3. Create and push release in one step:
+   - `pwsh -ExecutionPolicy Bypass -File .\scripts\create_release.ps1 -Version 0.1.1 -Push`
+
+When tag `v0.1.1` is pushed, GitHub Actions will auto-create a release using the matching section in `CHANGELOG.md`.
 
 ## Suggested Backup Cadence
 
