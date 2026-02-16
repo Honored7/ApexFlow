@@ -1,0 +1,16 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# IDE
+.vscode/
+*.user
+*.suo
+
+# cTrader package artifacts copied externally
+*.algo
+*.algo.metadata
+
+# Logs / temp
+*.log
+*.tmp

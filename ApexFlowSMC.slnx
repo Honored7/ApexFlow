@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ApexFlowExecutor/ApexFlowExecutor.csproj" />
+  <Project Path="ApexFlowSMC/ApexFlowSMC.csproj" />
+</Solution>

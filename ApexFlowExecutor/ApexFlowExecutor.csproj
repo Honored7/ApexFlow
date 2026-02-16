@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>ApexFlowExecutionBot</AssemblyName>
+    <RobotName>ApexFlowExecutionBot</RobotName>
+    <AlgoPublish>false</AlgoPublish>
+    <PrimaryRobotsRoot>$(UserProfile)\OneDrive\DOCUMENTS\cAlgo\Sources\Robots</PrimaryRobotsRoot>
+    <SecondaryRobotsRoot>$(UserProfile)\Documents\cAlgo\Sources\Robots</SecondaryRobotsRoot>
+    <PrimaryProjectDir>$(PrimaryRobotsRoot)\$(RobotName)</PrimaryProjectDir>
+    <SecondaryProjectDir>$(SecondaryRobotsRoot)\$(RobotName)</SecondaryProjectDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="cTrader.Automate" Version="*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ApexFlowSMC\RegimeStateEngine.cs" Link="RegimeStateEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\SignalLifecycleEngine.cs" Link="SignalLifecycleEngine.cs" />
+  </ItemGroup>
+
+  <Target Name="PostBuildDeployRobotArtifacts" AfterTargets="_AlgoBuildAfterBuild">
+    <MakeDir Directories="$(PrimaryRobotsRoot);$(PrimaryProjectDir);$(SecondaryRobotsRoot);$(SecondaryProjectDir)" />
+
+    <ItemGroup>
+      <AlgoFromTargetDir Include="$(TargetDir)*.algo" />
+      <AlgoMetadataFromTargetDir Include="$(TargetDir)*.algo.metadata" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(AlgoFromTargetDir)"
+          DestinationFiles="$(PrimaryRobotsRoot)\$(RobotName).algo"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoFromTargetDir)' != ''" />
+    <Copy SourceFiles="@(AlgoMetadataFromTargetDir)"
+          DestinationFiles="$(PrimaryRobotsRoot)\$(RobotName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoMetadataFromTargetDir)' != ''" />
+
+    <Copy SourceFiles="@(AlgoFromTargetDir)"
+          DestinationFiles="$(SecondaryRobotsRoot)\$(RobotName).algo"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoFromTargetDir)' != ''" />
+    <Copy SourceFiles="@(AlgoMetadataFromTargetDir)"
+          DestinationFiles="$(SecondaryRobotsRoot)\$(RobotName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoMetadataFromTargetDir)' != ''" />
+
+    <Copy SourceFiles="$(PrimaryRobotsRoot)\$(RobotName).algo"
+          DestinationFiles="$(PrimaryProjectDir)\$(RobotName).algo"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(PrimaryRobotsRoot)\$(RobotName).algo')" />
+    <Copy SourceFiles="$(PrimaryRobotsRoot)\$(RobotName).algo.metadata"
+          DestinationFiles="$(PrimaryProjectDir)\$(RobotName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(PrimaryRobotsRoot)\$(RobotName).algo.metadata')" />
+
+    <Copy SourceFiles="$(SecondaryRobotsRoot)\$(RobotName).algo"
+          DestinationFiles="$(SecondaryProjectDir)\$(RobotName).algo"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(SecondaryRobotsRoot)\$(RobotName).algo')" />
+    <Copy SourceFiles="$(SecondaryRobotsRoot)\$(RobotName).algo.metadata"
+          DestinationFiles="$(SecondaryProjectDir)\$(RobotName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(SecondaryRobotsRoot)\$(RobotName).algo.metadata')" />
+
+    <ItemGroup>
+      <BuildArtifactsToMirror Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).deps.json;$(TargetDir)$(AssemblyName).pdb" />
+      <SourceArtifactsToMirror Include="$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\**\*.md"
+                               Exclude="$(MSBuildProjectDirectory)\bin\**;$(MSBuildProjectDirectory)\obj\**" />
+    </ItemGroup>
+
+    <Delete Files="$(PrimaryRobotsRoot)\CBOT_1.algo;$(PrimaryRobotsRoot)\CBOT_1.algo.metadata;$(SecondaryRobotsRoot)\CBOT_1.algo;$(SecondaryRobotsRoot)\CBOT_1.algo.metadata;$(PrimaryProjectDir)\CBOT_1.algo;$(PrimaryProjectDir)\CBOT_1.algo.metadata;$(SecondaryProjectDir)\CBOT_1.algo;$(SecondaryProjectDir)\CBOT_1.algo.metadata"
+            TreatErrorsAsWarnings="true" />
+
+    <Copy SourceFiles="@(BuildArtifactsToMirror)"
+          DestinationFolder="$(PrimaryProjectDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(BuildArtifactsToMirror.Identity)')" />
+    <Copy SourceFiles="@(BuildArtifactsToMirror)"
+          DestinationFolder="$(SecondaryProjectDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(BuildArtifactsToMirror.Identity)')" />
+
+    <Copy SourceFiles="@(SourceArtifactsToMirror)"
+          DestinationFiles="@(SourceArtifactsToMirror->'$(PrimaryProjectDir)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SourceArtifactsToMirror)"
+          DestinationFiles="@(SourceArtifactsToMirror->'$(SecondaryProjectDir)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(MSBuildProjectFullPath)"
+          DestinationFiles="$(PrimaryProjectDir)\$(RobotName).csproj"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectFullPath)"
+          DestinationFiles="$(SecondaryProjectDir)\$(RobotName).csproj"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -1,0 +1,93 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>ApexFlowSmartMoneyIndicator</AssemblyName>
+    <IndicatorName>ApexFlowSmartMoneyIndicator</IndicatorName>
+            <AlgoPublish>false</AlgoPublish>
+    <PrimaryIndicatorsRoot>$(UserProfile)\OneDrive\DOCUMENTS\cAlgo\Sources\Indicators</PrimaryIndicatorsRoot>
+    <SecondaryIndicatorsRoot>$(UserProfile)\Documents\cAlgo\Sources\Indicators</SecondaryIndicatorsRoot>
+    <PrimaryProjectDir>$(PrimaryIndicatorsRoot)\$(IndicatorName)</PrimaryProjectDir>
+    <SecondaryProjectDir>$(SecondaryIndicatorsRoot)\$(IndicatorName)</SecondaryProjectDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="cTrader.Automate" Version="*" />
+  </ItemGroup>
+
+      <Target Name="PostBuildDeployIndicatorArtifacts" AfterTargets="_AlgoBuildAfterBuild">
+    <MakeDir Directories="$(PrimaryIndicatorsRoot);$(PrimaryProjectDir);$(SecondaryIndicatorsRoot);$(SecondaryProjectDir)" />
+
+    <ItemGroup>
+      <AlgoFromTargetDir Include="$(TargetDir)*.algo" />
+      <AlgoMetadataFromTargetDir Include="$(TargetDir)*.algo.metadata" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(AlgoFromTargetDir)"
+          DestinationFiles="$(PrimaryIndicatorsRoot)\$(IndicatorName).algo"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoFromTargetDir)' != ''" />
+    <Copy SourceFiles="@(AlgoMetadataFromTargetDir)"
+          DestinationFiles="$(PrimaryIndicatorsRoot)\$(IndicatorName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoMetadataFromTargetDir)' != ''" />
+
+    <Copy SourceFiles="@(AlgoFromTargetDir)"
+          DestinationFiles="$(SecondaryIndicatorsRoot)\$(IndicatorName).algo"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoFromTargetDir)' != ''" />
+    <Copy SourceFiles="@(AlgoMetadataFromTargetDir)"
+          DestinationFiles="$(SecondaryIndicatorsRoot)\$(IndicatorName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="'@(AlgoMetadataFromTargetDir)' != ''" />
+
+    <Copy SourceFiles="$(PrimaryIndicatorsRoot)\$(IndicatorName).algo"
+          DestinationFiles="$(PrimaryProjectDir)\$(IndicatorName).algo"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(PrimaryIndicatorsRoot)\$(IndicatorName).algo')" />
+    <Copy SourceFiles="$(PrimaryIndicatorsRoot)\$(IndicatorName).algo.metadata"
+          DestinationFiles="$(PrimaryProjectDir)\$(IndicatorName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(PrimaryIndicatorsRoot)\$(IndicatorName).algo.metadata')" />
+
+    <Copy SourceFiles="$(SecondaryIndicatorsRoot)\$(IndicatorName).algo"
+          DestinationFiles="$(SecondaryProjectDir)\$(IndicatorName).algo"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(SecondaryIndicatorsRoot)\$(IndicatorName).algo')" />
+    <Copy SourceFiles="$(SecondaryIndicatorsRoot)\$(IndicatorName).algo.metadata"
+          DestinationFiles="$(SecondaryProjectDir)\$(IndicatorName).algo.metadata"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(SecondaryIndicatorsRoot)\$(IndicatorName).algo.metadata')" />
+
+            <ItemGroup>
+                  <BuildArtifactsToMirror Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).deps.json;$(TargetDir)$(AssemblyName).pdb" />
+      <SourceArtifactsToMirror Include="$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\**\*.md"
+                               Exclude="$(MSBuildProjectDirectory)\bin\**;$(MSBuildProjectDirectory)\obj\**" />
+    </ItemGroup>
+
+            <Delete Files="$(PrimaryIndicatorsRoot)\CBOT_1.algo;$(PrimaryIndicatorsRoot)\CBOT_1.algo.metadata;$(SecondaryIndicatorsRoot)\CBOT_1.algo;$(SecondaryIndicatorsRoot)\CBOT_1.algo.metadata;$(PrimaryProjectDir)\CBOT_1.algo;$(PrimaryProjectDir)\CBOT_1.algo.metadata;$(SecondaryProjectDir)\CBOT_1.algo;$(SecondaryProjectDir)\CBOT_1.algo.metadata"
+                                    TreatErrorsAsWarnings="true" />
+
+    <Copy SourceFiles="@(BuildArtifactsToMirror)"
+          DestinationFolder="$(PrimaryProjectDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(BuildArtifactsToMirror.Identity)')" />
+    <Copy SourceFiles="@(BuildArtifactsToMirror)"
+          DestinationFolder="$(SecondaryProjectDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(BuildArtifactsToMirror.Identity)')" />
+
+    <Copy SourceFiles="@(SourceArtifactsToMirror)"
+          DestinationFiles="@(SourceArtifactsToMirror->'$(PrimaryProjectDir)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SourceArtifactsToMirror)"
+          DestinationFiles="@(SourceArtifactsToMirror->'$(SecondaryProjectDir)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(MSBuildProjectFullPath)"
+          DestinationFiles="$(PrimaryProjectDir)\$(IndicatorName).csproj"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectFullPath)"
+          DestinationFiles="$(SecondaryProjectDir)\$(IndicatorName).csproj"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>
