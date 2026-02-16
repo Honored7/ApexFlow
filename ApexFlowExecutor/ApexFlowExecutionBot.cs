@@ -16,7 +16,7 @@ namespace cAlgo.Robots
         [Parameter("Enable Symbol Scanner", Group = "Execution", DefaultValue = true)]
         public bool EnableSymbolScanner { get; set; }
 
-        [Parameter("Symbols CSV", Group = "Execution", DefaultValue = "EURUSD,GBPUSD,XAUUSD,US30")]
+        [Parameter("Symbols CSV", Group = "Execution", DefaultValue = "EURUSD,GBPUSD,XAUUSD")]
         public string SymbolsCsv { get; set; }
 
         [Parameter("Enable Auto Execution", Group = "Execution", DefaultValue = false)]
@@ -62,26 +62,32 @@ namespace cAlgo.Robots
         [Parameter("Custom Max Concurrent", Group = "Risk", DefaultValue = 4, MinValue = 1, MaxValue = 20)]
         public int CustomMaxConcurrent { get; set; }
 
-        [Parameter("Max Gross Exposure (Lots)", Group = "Risk", DefaultValue = 5.0, MinValue = 0.01, MaxValue = 500)]
+        [Parameter("Max Gross Exposure (Lots)", Group = "Risk", DefaultValue = 2.0, MinValue = 0.01, MaxValue = 500)]
         public double MaxGrossExposureLots { get; set; }
 
         // ── Stops ──────────────────────────────────────────────────
         [Parameter("ATR Period", Group = "Stops", DefaultValue = 14, MinValue = 2, MaxValue = 200)]
         public int AtrPeriod { get; set; }
 
-        [Parameter("SL ATR Multiplier", Group = "Stops", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
+        [Parameter("SL ATR Multiplier", Group = "Stops", DefaultValue = 1.8, MinValue = 0.5, MaxValue = 10)]
         public double SlAtrMultiplier { get; set; }
 
         [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 3.5, MinValue = 0.5, MaxValue = 20)]
         public double TpAtrMultiplier { get; set; }
 
-        [Parameter("Min SL (pips)", Group = "Stops", DefaultValue = 8, MinValue = 1, MaxValue = 500)]
+        [Parameter("MeanRev SL ATR Mult", Group = "Stops", DefaultValue = 1.2, MinValue = 0.3, MaxValue = 5)]
+        public double MeanRevSlAtrMult { get; set; }
+
+        [Parameter("MeanRev TP to Mid Band", Group = "Stops", DefaultValue = true)]
+        public bool MeanRevTpToMidBand { get; set; }
+
+        [Parameter("Min SL (pips)", Group = "Stops", DefaultValue = 5, MinValue = 1, MaxValue = 500)]
         public double MinSlPips { get; set; }
 
-        [Parameter("Max SL (pips)", Group = "Stops", DefaultValue = 150, MinValue = 5, MaxValue = 5000)]
+        [Parameter("Max SL (pips)", Group = "Stops", DefaultValue = 100, MinValue = 5, MaxValue = 5000)]
         public double MaxSlPips { get; set; }
 
-        [Parameter("Min R:R", Group = "Stops", DefaultValue = 1.5, MinValue = 1.0, MaxValue = 10)]
+        [Parameter("Min R:R", Group = "Stops", DefaultValue = 1.8, MinValue = 1.0, MaxValue = 10)]
         public double MinRiskReward { get; set; }
 
         // ── Trailing ───────────────────────────────────────────────
@@ -122,8 +128,11 @@ namespace cAlgo.Robots
         [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 4, MinValue = 1, MaxValue = 100)]
         public int SignalCooldownBars { get; set; }
 
-        [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
+        [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.5, MinValue = 0.5, MaxValue = 10)]
         public double MinConfluence { get; set; }
+
+        [Parameter("MeanRev Min Confluence", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
+        public double MeanRevMinConfluence { get; set; }
 
         [Parameter("Use HTF Filter", Group = "Regime", DefaultValue = true)]
         public bool UseHtfFilter { get; set; }
@@ -527,7 +536,11 @@ namespace cAlgo.Robots
                 Regime = regime,
                 AtrPips = atrPips,
                 ConfluenceScore = confluenceScore,
-                Index = index
+                Index = index,
+                Strategy = regime.Strategy,
+                BollingerMidBandDistance = ctx.BollingerCalc.IsReady
+                    ? Math.Abs(close - ctx.BollingerCalc.MiddleBand) / ctx.Symbol.PipSize
+                    : 0
             };
         }
 
@@ -679,7 +692,7 @@ namespace cAlgo.Robots
                     }
                 }
 
-                if (confluenceScore < 1.5) return null;
+                if (confluenceScore < MeanRevMinConfluence) return null;
                 return TradeType.Buy;
             }
 
@@ -703,7 +716,7 @@ namespace cAlgo.Robots
                     }
                 }
 
-                if (confluenceScore < 1.5) return null;
+                if (confluenceScore < MeanRevMinConfluence) return null;
                 return TradeType.Sell;
             }
 
@@ -752,11 +765,24 @@ namespace cAlgo.Robots
 
             if (!CanOpenOnSymbol(ctx.SymbolName)) return false;
 
-            // Calculate stops
-            double slPips = candidate.AtrPips * SlAtrMultiplier * _riskProfile.SlMultiplier;
+            // Calculate stops — strategy-specific
+            double slMult = candidate.Strategy == StrategyMode.MeanReversion
+                ? MeanRevSlAtrMult : SlAtrMultiplier;
+            double slPips = candidate.AtrPips * slMult * _riskProfile.SlMultiplier;
             slPips = Math.Max(MinSlPips, Math.Min(MaxSlPips, slPips));
 
-            double tpPips = candidate.AtrPips * TpAtrMultiplier * _riskProfile.TpMultiplier;
+            double tpPips;
+            if (candidate.Strategy == StrategyMode.MeanReversion
+                && MeanRevTpToMidBand
+                && candidate.BollingerMidBandDistance > 0)
+            {
+                // Target the Bollinger mid-band for mean reversion
+                tpPips = candidate.BollingerMidBandDistance * _riskProfile.TpMultiplier;
+            }
+            else
+            {
+                tpPips = candidate.AtrPips * TpAtrMultiplier * _riskProfile.TpMultiplier;
+            }
             double minTpPips = slPips * Math.Max(MinRiskReward, _riskProfile.MinRiskReward);
             tpPips = Math.Max(minTpPips, tpPips);
 
@@ -1102,6 +1128,8 @@ namespace cAlgo.Robots
             public double AtrPips { get; set; }
             public double ConfluenceScore { get; set; }
             public int Index { get; set; }
+            public StrategyMode Strategy { get; set; }
+            public double BollingerMidBandDistance { get; set; } // pips to mid-band for mean reversion TP
         }
     }
 }
