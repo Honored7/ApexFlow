@@ -70,12 +70,9 @@ namespace cAlgo.Indicators
 
         public void Update(DateTime barTimeUtc, double low, double high, double close, double tickVolume)
         {
-            string sessionName = ResolveSessionName(barTimeUtc);
-            if (sessionName == null)
+            var sessions = ResolveSessionNames(barTimeUtc);
+            if (sessions.Count == 0)
                 return;
-
-            string key = BuildSessionKey(barTimeUtc, sessionName);
-            var bins = GetOrCreateBins(key);
 
             int startBin = (int)Math.Floor(Math.Min(low, high) / _binSize);
             int endBin = (int)Math.Floor(Math.Max(low, high) / _binSize);
@@ -86,19 +83,27 @@ namespace cAlgo.Indicators
             double closeFocus = safeVolume - distributed;
             double perBin = distributed / binCount;
 
-            for (int bin = startBin; bin <= endBin; bin++)
-                bins[bin] = bins.TryGetValue(bin, out double current) ? current + perBin : perBin;
+            // Add volume to ALL active sessions (handles overlap)
+            foreach (string sessionName in sessions)
+            {
+                string key = BuildSessionKey(barTimeUtc, sessionName);
+                var bins = GetOrCreateBins(key);
 
-            int closeBin = (int)Math.Floor(close / _binSize);
-            bins[closeBin] = bins.TryGetValue(closeBin, out double closeCurrent) ? closeCurrent + closeFocus : closeFocus;
+                for (int bin = startBin; bin <= endBin; bin++)
+                    bins[bin] = bins.TryGetValue(bin, out double current) ? current + perBin : perBin;
+
+                int closeBin = (int)Math.Floor(close / _binSize);
+                bins[closeBin] = bins.TryGetValue(closeBin, out double closeCurrent) ? closeCurrent + closeFocus : closeFocus;
+            }
         }
 
         public VolumeProfileSnapshot BuildSnapshot(DateTime barTimeUtc, double hvnPercentile, double lvnPercentile)
         {
-            string sessionName = ResolveSessionName(barTimeUtc);
-            if (sessionName == null)
+            var sessions = ResolveSessionNames(barTimeUtc);
+            if (sessions.Count == 0)
                 return new VolumeProfileSnapshot { HasData = false, BinSize = _binSize, SessionLabel = "Disabled" };
 
+            string sessionName = sessions[0]; // Primary session for snapshot
             string key = BuildSessionKey(barTimeUtc, sessionName);
             if (!_sessionBins.TryGetValue(key, out var bins) || bins.Count < 6)
             {
@@ -160,24 +165,21 @@ namespace cAlgo.Indicators
             return bins;
         }
 
-        private string ResolveSessionName(DateTime timeUtc)
+        private List<string> ResolveSessionNames(DateTime timeUtc)
         {
+            var result = new List<string>(3);
             int hour = timeUtc.Hour;
 
             bool inLondon = hour >= 7 && hour < 16;
             bool inNewYork = hour >= 13 && hour < 22;
             bool inAsia = hour >= 22 || hour < 7;
 
-            if (_enableLondon && inLondon)
-                return "London";
+            // Add ALL active sessions — overlap hours go to both
+            if (_enableLondon && inLondon) result.Add("London");
+            if (_enableNewYork && inNewYork) result.Add("NewYork");
+            if (_enableAsia && inAsia) result.Add("Asia");
 
-            if (_enableNewYork && inNewYork)
-                return "NewYork";
-
-            if (_enableAsia && inAsia)
-                return "Asia";
-
-            return null;
+            return result;
         }
 
         private string BuildSessionKey(DateTime timeUtc, string sessionName)

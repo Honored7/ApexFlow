@@ -15,8 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\ApexFlowSMC\RegimeStateEngine.cs" Link="RegimeStateEngine.cs" />
     <Compile Include="..\ApexFlowSMC\SignalLifecycleEngine.cs" Link="SignalLifecycleEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\MarketStructureEngine.cs" Link="MarketStructureEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\VolatilityEngine.cs" Link="VolatilityEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\AdaptiveRegimeEngine.cs" Link="AdaptiveRegimeEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\RiskProfileEngine.cs" Link="RiskProfileEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\TrailingStopEngine.cs" Link="TrailingStopEngine.cs" />
   </ItemGroup>
 
   <Target Name="PostBuildDeployRobotArtifacts" AfterTargets="_AlgoBuildAfterBuild">

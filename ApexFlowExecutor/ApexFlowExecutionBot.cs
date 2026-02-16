@@ -11,6 +11,7 @@ namespace cAlgo.Robots
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
     public class ApexFlowExecutionBot : Robot
     {
+        // ── Execution ──────────────────────────────────────────────
         [Parameter("Enable Symbol Scanner", Group = "Execution", DefaultValue = true)]
         public bool EnableSymbolScanner { get; set; }
 
@@ -22,24 +23,6 @@ namespace cAlgo.Robots
 
         [Parameter("Trade Label", Group = "Execution", DefaultValue = "ApexFlowExec")]
         public string TradeLabel { get; set; }
-
-        [Parameter("Volume (Lots)", Group = "Execution", DefaultValue = 0.01, MinValue = 0.01, MaxValue = 100)]
-        public double VolumeInLots { get; set; }
-
-        [Parameter("Use Dynamic Sizing", Group = "Execution", DefaultValue = true)]
-        public bool UseDynamicSizing { get; set; }
-
-        [Parameter("Risk Per Trade (%)", Group = "Execution", DefaultValue = 0.25, MinValue = 0.05, MaxValue = 5.0)]
-        public double RiskPerTradePercent { get; set; }
-
-        [Parameter("Max Volume (Lots)", Group = "Execution", DefaultValue = 1.0, MinValue = 0.01, MaxValue = 100)]
-        public double MaxVolumeLots { get; set; }
-
-        [Parameter("Max Positions", Group = "Execution", DefaultValue = 1, MinValue = 1, MaxValue = 10)]
-        public int MaxPositions { get; set; }
-
-        [Parameter("Max Concurrent Symbols", Group = "Execution", DefaultValue = 1, MinValue = 1, MaxValue = 100)]
-        public int MaxConcurrentSymbols { get; set; }
 
         [Parameter("Single Best Signal", Group = "Execution", DefaultValue = true)]
         public bool SingleBestSignalPerBar { get; set; }
@@ -62,541 +45,791 @@ namespace cAlgo.Robots
         [Parameter("Allow Short", Group = "Execution", DefaultValue = true)]
         public bool AllowShort { get; set; }
 
-        [Parameter("Stop Loss (pips)", Group = "Risk", DefaultValue = 20, MinValue = 1, MaxValue = 1000)]
-        public double StopLossPips { get; set; }
+        // ── Risk Profile ───────────────────────────────────────────
+        [Parameter("Risk Profile", Group = "Risk", DefaultValue = 1)]
+        public int RiskProfileIndex { get; set; }
 
-        [Parameter("Take Profit (pips)", Group = "Risk", DefaultValue = 35, MinValue = 1, MaxValue = 2000)]
-        public double TakeProfitPips { get; set; }
+        [Parameter("Custom Risk %", Group = "Risk", DefaultValue = 0.75, MinValue = 0.05, MaxValue = 5.0)]
+        public double CustomRiskPercent { get; set; }
 
-        [Parameter("Use Adaptive Stops", Group = "Risk", DefaultValue = true)]
-        public bool UseAdaptiveStops { get; set; }
+        [Parameter("Custom Max Trades/Day", Group = "Risk", DefaultValue = 8, MinValue = 1, MaxValue = 50)]
+        public int CustomMaxTradesPerDay { get; set; }
 
-        [Parameter("ATR Period", Group = "Risk", DefaultValue = 14, MinValue = 2, MaxValue = 200)]
-        public int AtrPeriod { get; set; }
+        [Parameter("Custom Max DD %", Group = "Risk", DefaultValue = 2.5, MinValue = 0.5, MaxValue = 10)]
+        public double CustomMaxDrawdownPct { get; set; }
 
-        [Parameter("SL ATR Mult", Group = "Risk", DefaultValue = 1.8, MinValue = 0.1, MaxValue = 20)]
-        public double StopLossAtrMultiplier { get; set; }
+        [Parameter("Custom Max Concurrent", Group = "Risk", DefaultValue = 4, MinValue = 1, MaxValue = 20)]
+        public int CustomMaxConcurrent { get; set; }
 
-        [Parameter("TP ATR Mult", Group = "Risk", DefaultValue = 2.8, MinValue = 0.1, MaxValue = 30)]
-        public double TakeProfitAtrMultiplier { get; set; }
-
-        [Parameter("Min SL (pips)", Group = "Risk", DefaultValue = 8, MinValue = 1, MaxValue = 1000)]
-        public double MinStopLossPips { get; set; }
-
-        [Parameter("Max SL (pips)", Group = "Risk", DefaultValue = 120, MinValue = 1, MaxValue = 5000)]
-        public double MaxStopLossPips { get; set; }
-
-        [Parameter("Min TP (pips)", Group = "Risk", DefaultValue = 12, MinValue = 1, MaxValue = 5000)]
-        public double MinTakeProfitPips { get; set; }
-
-        [Parameter("Max Spread (pips)", Group = "Risk", DefaultValue = 1.8, MinValue = 0.1, MaxValue = 20)]
-        public double MaxSpreadPips { get; set; }
-
-        [Parameter("Max Entry Deviation", Group = "Risk", DefaultValue = 0.8, MinValue = 0.1, MaxValue = 20)]
-        public double MaxEntryDeviationPips { get; set; }
-
-        [Parameter("Entry Retries", Group = "Risk", DefaultValue = 2, MinValue = 1, MaxValue = 5)]
-        public int EntryRetryAttempts { get; set; }
-
-        [Parameter("Spread Profile Window", Group = "Risk", DefaultValue = 80, MinValue = 10, MaxValue = 1000)]
-        public int SpreadProfileWindow { get; set; }
-
-        [Parameter("Max Spread/Avg Ratio", Group = "Risk", DefaultValue = 1.8, MinValue = 1.0, MaxValue = 10)]
-        public double MaxSpreadToAverageRatio { get; set; }
-
-        [Parameter("Max Daily Loss", Group = "Risk", DefaultValue = 100, MinValue = 1, MaxValue = 100000)]
-        public double MaxDailyLoss { get; set; }
-
-        [Parameter("Close On Daily Lock", Group = "Risk", DefaultValue = true)]
-        public bool CloseOnDailyLock { get; set; }
-
-        [Parameter("Max Open Risk (%)", Group = "Risk", DefaultValue = 1.0, MinValue = 0.1, MaxValue = 20)]
-        public double MaxOpenRiskPercent { get; set; }
-
-        [Parameter("Max Gross Exposure (Lots)", Group = "Risk", DefaultValue = 2.0, MinValue = 0.01, MaxValue = 500)]
+        [Parameter("Max Gross Exposure (Lots)", Group = "Risk", DefaultValue = 5.0, MinValue = 0.01, MaxValue = 500)]
         public double MaxGrossExposureLots { get; set; }
 
-        [Parameter("Max Trades / Day", Group = "Risk", DefaultValue = 3, MinValue = 1, MaxValue = 200)]
-        public int MaxTradesPerDay { get; set; }
+        // ── Stops ──────────────────────────────────────────────────
+        [Parameter("ATR Period", Group = "Stops", DefaultValue = 14, MinValue = 2, MaxValue = 200)]
+        public int AtrPeriod { get; set; }
 
-        [Parameter("Enable Perf Guard", Group = "Risk", DefaultValue = true)]
-        public bool EnablePerformanceGuard { get; set; }
+        [Parameter("SL ATR Multiplier", Group = "Stops", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
+        public double SlAtrMultiplier { get; set; }
 
-        [Parameter("Guard Window Trades", Group = "Risk", DefaultValue = 20, MinValue = 5, MaxValue = 500)]
-        public int PerformanceGuardWindowTrades { get; set; }
+        [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 3.5, MinValue = 0.5, MaxValue = 20)]
+        public double TpAtrMultiplier { get; set; }
 
-        [Parameter("Min Win Rate (%)", Group = "Risk", DefaultValue = 40.0, MinValue = 0.0, MaxValue = 100.0)]
-        public double PerformanceMinWinRatePercent { get; set; }
+        [Parameter("Min SL (pips)", Group = "Stops", DefaultValue = 8, MinValue = 1, MaxValue = 500)]
+        public double MinSlPips { get; set; }
 
-        [Parameter("Max Window DD (%)", Group = "Risk", DefaultValue = 3.0, MinValue = 0.1, MaxValue = 100.0)]
-        public double PerformanceMaxWindowDrawdownPercent { get; set; }
+        [Parameter("Max SL (pips)", Group = "Stops", DefaultValue = 150, MinValue = 5, MaxValue = 5000)]
+        public double MaxSlPips { get; set; }
 
-        [Parameter("Perf Guard Cooldown", Group = "Risk", DefaultValue = 30, MinValue = 1, MaxValue = 1000)]
-        public int PerformanceGuardCooldownBars { get; set; }
+        [Parameter("Min R:R", Group = "Stops", DefaultValue = 1.5, MinValue = 1.0, MaxValue = 10)]
+        public double MinRiskReward { get; set; }
 
-        [Parameter("Signal Cooldown (bars)", Group = "Signals", DefaultValue = 8, MinValue = 1, MaxValue = 200)]
-        public int SignalCooldownBars { get; set; }
+        // ── Trailing ───────────────────────────────────────────────
+        [Parameter("Trail Mode (0=Chandelier 1=Structure 2=Step 3=BE only)", Group = "Trailing", DefaultValue = 0)]
+        public int TrailModeIndex { get; set; }
 
-        [Parameter("Swing Lookback", Group = "Signals", DefaultValue = 4, MinValue = 2, MaxValue = 20)]
+        [Parameter("Chandelier Multiplier", Group = "Trailing", DefaultValue = 2.5, MinValue = 1.0, MaxValue = 6.0)]
+        public double ChandelierMult { get; set; }
+
+        [Parameter("Breakeven at R", Group = "Trailing", DefaultValue = 0.6, MinValue = 0.2, MaxValue = 3.0)]
+        public double BreakevenAtR { get; set; }
+
+        [Parameter("Partial Close %", Group = "Trailing", DefaultValue = 50, MinValue = 0, MaxValue = 100)]
+        public int PartialClosePct { get; set; }
+
+        [Parameter("Partial Close at R", Group = "Trailing", DefaultValue = 1.0, MinValue = 0.3, MaxValue = 5.0)]
+        public double PartialCloseAtR { get; set; }
+
+        // ── Regime / Signals ───────────────────────────────────────
+        [Parameter("ADX Period", Group = "Regime", DefaultValue = 14, MinValue = 5, MaxValue = 50)]
+        public int AdxPeriod { get; set; }
+
+        [Parameter("Donchian Period", Group = "Regime", DefaultValue = 20, MinValue = 5, MaxValue = 100)]
+        public int DonchianPeriod { get; set; }
+
+        [Parameter("Bollinger Period", Group = "Regime", DefaultValue = 20, MinValue = 5, MaxValue = 100)]
+        public int BollingerPeriod { get; set; }
+
+        [Parameter("Bollinger StdDev", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 4.0)]
+        public double BollingerStdDev { get; set; }
+
+        [Parameter("RSI Period", Group = "Regime", DefaultValue = 14, MinValue = 5, MaxValue = 50)]
+        public int RsiPeriod { get; set; }
+
+        [Parameter("Swing Lookback", Group = "Regime", DefaultValue = 5, MinValue = 2, MaxValue = 20)]
         public int SwingLookback { get; set; }
 
-        [Parameter("Momentum Period", Group = "Signals", DefaultValue = 8, MinValue = 3, MaxValue = 100)]
-        public int MomentumPeriod { get; set; }
+        [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 4, MinValue = 1, MaxValue = 100)]
+        public int SignalCooldownBars { get; set; }
 
-        [Parameter("Fast MA", Group = "Signals", DefaultValue = 20, MinValue = 2, MaxValue = 300)]
-        public int FastMaPeriod { get; set; }
-
-        [Parameter("Slow MA", Group = "Signals", DefaultValue = 50, MinValue = 5, MaxValue = 500)]
-        public int SlowMaPeriod { get; set; }
+        [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
+        public double MinConfluence { get; set; }
 
         [Parameter("Use HTF Filter", Group = "Regime", DefaultValue = true)]
-        public bool UseHigherTimeframeFilter { get; set; }
+        public bool UseHtfFilter { get; set; }
 
         [Parameter("HTF", Group = "Regime", DefaultValue = "Hour")]
         public TimeFrame HigherTimeframe { get; set; }
 
         [Parameter("HTF Fast MA", Group = "Regime", DefaultValue = 34, MinValue = 2, MaxValue = 300)]
-        public int HigherTimeframeFastMaPeriod { get; set; }
+        public int HtfFastMaPeriod { get; set; }
 
         [Parameter("HTF Slow MA", Group = "Regime", DefaultValue = 89, MinValue = 5, MaxValue = 500)]
-        public int HigherTimeframeSlowMaPeriod { get; set; }
+        public int HtfSlowMaPeriod { get; set; }
 
-        [Parameter("Regime Chop Thresh", Group = "Regime", DefaultValue = 0.95, MinValue = 0.1, MaxValue = 20)]
-        public double RegimeChopThreshold { get; set; }
+        // ── Spread Filter ──────────────────────────────────────────
+        [Parameter("Max Spread (pips)", Group = "Spread", DefaultValue = 3.0, MinValue = 0.1, MaxValue = 30)]
+        public double MaxSpreadPips { get; set; }
 
-        [Parameter("Regime Hysteresis", Group = "Regime", DefaultValue = 0.17, MinValue = 0, MaxValue = 0.5)]
-        public double RegimeHysteresis { get; set; }
+        [Parameter("Spread Window", Group = "Spread", DefaultValue = 80, MinValue = 10, MaxValue = 1000)]
+        public int SpreadProfileWindow { get; set; }
 
-        [Parameter("Regime Vol Window", Group = "Regime", DefaultValue = 55, MinValue = 10, MaxValue = 500)]
-        public int RegimeVolatilityWindow { get; set; }
+        [Parameter("Max Spread/Avg", Group = "Spread", DefaultValue = 2.0, MinValue = 1.0, MaxValue = 10)]
+        public double MaxSpreadToAvgRatio { get; set; }
 
-        [Parameter("Regime Sess Window", Group = "Regime", DefaultValue = 90, MinValue = 10, MaxValue = 500)]
-        public int RegimeSessionWindow { get; set; }
+        [Parameter("Entry Retries", Group = "Spread", DefaultValue = 2, MinValue = 1, MaxValue = 5)]
+        public int EntryRetryAttempts { get; set; }
 
-        [Parameter("Min Regime Strength", Group = "Regime", DefaultValue = 1.0, MinValue = 0.1, MaxValue = 20)]
-        public double MinRegimeStrength { get; set; }
+        [Parameter("Max Entry Deviation (pips)", Group = "Spread", DefaultValue = 1.0, MinValue = 0.1, MaxValue = 20)]
+        public double MaxEntryDeviationPips { get; set; }
 
-        [Parameter("Allow Pullback Entries", Group = "Regime", DefaultValue = false)]
-        public bool AllowPullbackEntries { get; set; }
-
+        // ── Private state ──────────────────────────────────────────
+        private RiskProfile _riskProfile;
+        private TrailMode _trailMode;
         private DateTime _currentTradingDate;
         private bool _dailyLockTriggered;
-        private int _guardPauseBarsRemaining;
-        private int _lastClosedTradesCountForGuard;
-        private readonly Dictionary<string, SymbolContext> _symbolContexts = new Dictionary<string, SymbolContext>(StringComparer.OrdinalIgnoreCase);
+        private double _startOfDayEquity;
+        private readonly Dictionary<string, SymbolContext> _symbolContexts =
+            new Dictionary<string, SymbolContext>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<long, TrailingStopEngine> _trailEngines =
+            new Dictionary<long, TrailingStopEngine>();
+        private readonly Dictionary<long, double> _originalSlPips =
+            new Dictionary<long, double>();
+
+        // ════════════════════════════════════════════════════════════
+        //  LIFECYCLE
+        // ════════════════════════════════════════════════════════════
 
         protected override void OnStart()
         {
-            var symbolsToTrack = ResolveTradeSymbols();
-            foreach (var symbol in symbolsToTrack)
+            // Resolve risk profile from integer parameter
+            var profileType = (RiskProfileType)Math.Min(3, Math.Max(0, RiskProfileIndex));
+            _riskProfile = RiskProfileEngine.GetProfile(profileType);
+            if (profileType == RiskProfileType.Custom)
             {
-                var context = CreateSymbolContext(symbol);
-                if (context != null)
-                    _symbolContexts[symbol] = context;
+                _riskProfile.RiskPerTrade = CustomRiskPercent / 100.0;
+                _riskProfile.MaxTotalTradesPerDay = CustomMaxTradesPerDay;
+                _riskProfile.MaxDailyDrawdownPct = CustomMaxDrawdownPct / 100.0;
+                _riskProfile.MaxConcurrentPositions = CustomMaxConcurrent;
+            }
+
+            // Apply trailing params from UI
+            _riskProfile.BreakevenAtR = BreakevenAtR;
+            _riskProfile.PartialCloseFraction = PartialClosePct / 100.0;
+            _riskProfile.PartialCloseAtR = PartialCloseAtR;
+            _riskProfile.CooldownBars = SignalCooldownBars;
+
+            // Resolve trail mode from integer parameter
+            switch (TrailModeIndex)
+            {
+                case 0: _trailMode = TrailMode.ChandelierExit; break;
+                case 1: _trailMode = TrailMode.StructureTrail; break;
+                case 2: _trailMode = TrailMode.StepTrail; break;
+                default: _trailMode = TrailMode.BreakevenOnly; break;
+            }
+
+            var symbolsToTrack = ResolveTradeSymbols();
+            foreach (var sym in symbolsToTrack)
+            {
+                var ctx = CreateSymbolContext(sym);
+                if (ctx != null)
+                    _symbolContexts[sym] = ctx;
             }
 
             if (_symbolContexts.Count == 0)
             {
-                Print("No valid symbols resolved for scanner. Bot stopped.");
+                Print("No valid symbols resolved. Bot stopped.");
                 Stop();
                 return;
             }
 
-            if (!TradeAsiaSession && !TradeLondonSession && !TradeNewYorkSession)
+            if (EnableSessionFilter && !TradeAsiaSession && !TradeLondonSession && !TradeNewYorkSession)
             {
-                Print("All sessions are disabled. Bot stopped.");
+                Print("All sessions disabled. Bot stopped.");
                 Stop();
                 return;
             }
 
             _currentTradingDate = Server.TimeInUtc.Date;
             _dailyLockTriggered = false;
-            _guardPauseBarsRemaining = 0;
-            _lastClosedTradesCountForGuard = GetClosedTradesCount();
+            _startOfDayEquity = Account.Equity;
 
-            Print("ApexFlowExecutionBot started. AutoExecution={0}, Symbols={1}, TF={2}", EnableAutoExecution, string.Join(",", _symbolContexts.Keys), TimeFrame);
+            Positions.Opened += OnPositionOpened;
+            Positions.Closed += OnPositionClosed;
+
+            Print("ApexFlowBot v2 started | Profile={0} | Risk={1:P2} | Trail={2} | Symbols={3}",
+                profileType, _riskProfile.RiskPerTrade, _trailMode, string.Join(",", _symbolContexts.Keys));
         }
+
+        protected override void OnStop()
+        {
+            Positions.Opened -= OnPositionOpened;
+            Positions.Closed -= OnPositionClosed;
+        }
+
+        private void OnPositionOpened(PositionOpenedEventArgs args)
+        {
+            var pos = args.Position;
+            if (pos.Label != TradeLabel) return;
+
+            var engine = new TrailingStopEngine
+            {
+                Mode = _trailMode,
+                ChandelierMultiplier = ChandelierMult,
+                BreakevenAtR = _riskProfile.BreakevenAtR,
+                PartialCloseAtR = _riskProfile.PartialCloseAtR,
+                PartialCloseFraction = _riskProfile.PartialCloseFraction
+            };
+            engine.OnPositionOpened(pos.EntryPrice, pos.TradeType == TradeType.Buy);
+            _trailEngines[pos.Id] = engine;
+
+            if (pos.StopLoss.HasValue)
+            {
+                var sym = Symbols.GetSymbol(pos.SymbolName);
+                if (sym != null)
+                    _originalSlPips[pos.Id] = Math.Abs(pos.EntryPrice - pos.StopLoss.Value) / sym.PipSize;
+            }
+        }
+
+        private void OnPositionClosed(PositionClosedEventArgs args)
+        {
+            _trailEngines.Remove(args.Position.Id);
+            _originalSlPips.Remove(args.Position.Id);
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  MAIN LOOP
+        // ════════════════════════════════════════════════════════════
 
         protected override void OnBar()
         {
             HandleDayRollover();
 
-            if (IsDailyLossLimitReached())
+            if (IsDailyDrawdownBreached())
             {
                 if (!_dailyLockTriggered)
                 {
                     _dailyLockTriggered = true;
-                    Print("Daily loss limit reached. Trading locked for {0:yyyy-MM-dd}", _currentTradingDate);
-
-                    if (CloseOnDailyLock)
-                        CloseBotPositions();
+                    Print("Daily DD limit ({0:P1}) reached. Locked for {1:yyyy-MM-dd}.",
+                        _riskProfile.MaxDailyDrawdownPct, _currentTradingDate);
+                    CloseBotPositions();
                 }
-
                 return;
             }
 
-            if (_guardPauseBarsRemaining > 0)
-            {
-                _guardPauseBarsRemaining--;
-                if (_guardPauseBarsRemaining == 0)
-                    Print("Performance guard cooldown complete. Trading resumed.");
-                return;
-            }
-
-            if (EnablePerformanceGuard && IsPerformanceGuardTriggered())
-            {
-                _guardPauseBarsRemaining = PerformanceGuardCooldownBars;
-                Print("Performance guard activated. Pausing entries for {0} bars.", PerformanceGuardCooldownBars);
-                return;
-            }
+            ManageOpenPositions();
 
             var candidates = new List<TradeCandidate>();
-            foreach (var context in _symbolContexts.Values)
+            foreach (var ctx in _symbolContexts.Values)
             {
-                var candidate = EvaluateCandidate(context);
+                var candidate = EvaluateCandidate(ctx);
                 if (candidate != null)
                     candidates.Add(candidate);
             }
 
-            if (candidates.Count == 0)
-                return;
+            if (candidates.Count == 0) return;
 
-            var orderedCandidates = candidates
-                .OrderByDescending(c => c.Regime.TrendStrength)
-                .ToList();
+            var ordered = candidates.OrderByDescending(c => c.ConfluenceScore).ToList();
 
             if (SingleBestSignalPerBar)
             {
-                var best = orderedCandidates[0];
-                if (TryExecute(best.Context, best.TradeType, best.Regime, best.VolatilityPerBarPips, best.SessionActivityRatio, best.Index))
+                var best = ordered[0];
+                if (TryExecute(best))
                     MarkLifecycle(best);
-                return;
             }
-
-            foreach (var candidate in orderedCandidates)
+            else
             {
-                if (TryExecute(candidate.Context, candidate.TradeType, candidate.Regime, candidate.VolatilityPerBarPips, candidate.SessionActivityRatio, candidate.Index))
-                    MarkLifecycle(candidate);
+                foreach (var c in ordered)
+                {
+                    if (TryExecute(c))
+                        MarkLifecycle(c);
+                }
             }
         }
 
-        private TradeCandidate EvaluateCandidate(SymbolContext context)
+        // ════════════════════════════════════════════════════════════
+        //  POSITION MANAGEMENT (trailing stops, partials, breakeven)
+        // ════════════════════════════════════════════════════════════
+
+        private void ManageOpenPositions()
         {
-            if (context.Bars == null)
-                return null;
-
-            if (!IsSessionAllowed(Server.TimeInUtc))
-                return null;
-
-            int minimumBars = Math.Max(SlowMaPeriod + 2, MomentumPeriod + 2);
-            if (context.Bars.Count < minimumBars)
-                return null;
-
-            int index = context.Bars.Count - 1;
-            DateTime barTime = context.Bars.OpenTimes[index];
-            if (barTime == context.LastProcessedBarTime)
-                return null;
-
-            context.LastProcessedBarTime = barTime;
-            context.LifecycleRule.MinBarsBetweenSameDirection = SignalCooldownBars;
-            UpdateSpreadProfile(context);
-
-            if (!IsSpreadTradeable(context))
-                return null;
-
-            UpdateSwingStructure(context, index);
-            GetHtfValues(context, index, out double htfFast, out double htfSlow);
-            UpdateRegimeNormalization(context, index, out double volatilityPerBarPips, out double sessionActivityRatio);
-
-            bool bosUp = !double.IsNaN(context.LastSwingHigh) && context.Bars.ClosePrices[index] > context.LastSwingHigh;
-            bool bosDown = !double.IsNaN(context.LastSwingLow) && context.Bars.ClosePrices[index] < context.LastSwingLow;
-            double momentum = (context.Bars.ClosePrices[index] - context.Bars.ClosePrices[index - MomentumPeriod]) / (MomentumPeriod * context.Symbol.PipSize);
-
-            var regime = RegimeStateEngine.Evaluate(
-                momentum,
-                bosUp,
-                bosDown,
-                htfFast,
-                htfSlow,
-                RegimeChopThreshold,
-                context.PreviousRegime,
-                volatilityPerBarPips,
-                sessionActivityRatio,
-                RegimeHysteresis);
-            context.PreviousRegime = regime.Regime;
-
-            bool fastAboveSlow = context.FastMa.Result[index] > context.SlowMa.Result[index];
-            bool fastBelowSlow = context.FastMa.Result[index] < context.SlowMa.Result[index];
-            bool strengthPass = regime.TrendStrength >= MinRegimeStrength;
-            bool trendRegimePass = regime.Regime == MarketRegime.Uptrend || regime.Regime == MarketRegime.Downtrend;
-            bool pullbackRegimePass = AllowPullbackEntries && regime.Regime == MarketRegime.Pullback;
-            bool regimeTypePass = trendRegimePass || pullbackRegimePass;
-
-            bool buySignal = AllowLong && strengthPass && regimeTypePass && regime.AllowLongContinuation && fastAboveSlow;
-            bool sellSignal = AllowShort && strengthPass && regimeTypePass && regime.AllowShortContinuation && fastBelowSlow;
-
-            if (buySignal && SignalLifecycleEngine.CanEmitBuy(index, context.LifecycleState, context.LifecycleRule))
+            var positions = Positions.Where(p => p.Label == TradeLabel).ToArray();
+            foreach (var pos in positions)
             {
-                return new TradeCandidate
+                if (!_trailEngines.TryGetValue(pos.Id, out var trail))
+                    continue;
+
+                var sym = Symbols.GetSymbol(pos.SymbolName);
+                if (sym == null) continue;
+
+                double atrPips = GetCurrentAtrPips(pos.SymbolName, sym);
+                double origSlPips = _originalSlPips.ContainsKey(pos.Id) ? _originalSlPips[pos.Id] : 20;
+
+                double nearSwingLow = double.NaN;
+                double nearSwingHigh = double.NaN;
+                if (_symbolContexts.TryGetValue(pos.SymbolName, out var ctx) && ctx.StructureState != null)
                 {
-                    Context = context,
-                    TradeType = TradeType.Buy,
-                    Regime = regime,
-                    VolatilityPerBarPips = volatilityPerBarPips,
-                    SessionActivityRatio = sessionActivityRatio,
-                    Index = index
-                };
+                    foreach (var sp in ctx.StructureState.SwingLows)
+                    {
+                        if (sp.Price < pos.EntryPrice) { nearSwingLow = sp.Price; break; }
+                    }
+                    foreach (var sp in ctx.StructureState.SwingHighs)
+                    {
+                        if (sp.Price > pos.EntryPrice) { nearSwingHigh = sp.Price; break; }
+                    }
+                }
+
+                bool isBuy = pos.TradeType == TradeType.Buy;
+                double currentPrice = isBuy ? sym.Bid : sym.Ask;
+                double currentSl = pos.StopLoss ?? double.NaN;
+
+                var action = trail.Evaluate(
+                    isBuy, pos.EntryPrice, currentSl, currentPrice,
+                    atrPips, sym.PipSize, origSlPips,
+                    nearSwingLow, nearSwingHigh);
+
+                if (action.TriggerPartialClose && action.PartialCloseFraction > 0)
+                {
+                    double closeVolume = sym.NormalizeVolumeInUnits(
+                        pos.VolumeInUnits * action.PartialCloseFraction, RoundingMode.Down);
+                    if (closeVolume >= sym.VolumeInUnitsMin && closeVolume < pos.VolumeInUnits)
+                    {
+                        ClosePosition(pos, closeVolume);
+                        Print("{0} {1}: {2}", pos.SymbolName, pos.TradeType, action.Reason);
+                    }
+                }
+
+                if (!double.IsNaN(action.NewStopLoss))
+                {
+                    ModifyPosition(pos, action.NewStopLoss, pos.TakeProfit);
+                    if (!string.IsNullOrEmpty(action.Reason) && !action.TriggerPartialClose)
+                        Print("{0} {1}: SL -> {2:F5} ({3})", pos.SymbolName, pos.TradeType,
+                            action.NewStopLoss, action.Reason);
+                }
+            }
+        }
+
+        private double GetCurrentAtrPips(string symbolName, Symbol sym)
+        {
+            if (_symbolContexts.TryGetValue(symbolName, out var ctx) && ctx.Atr != null)
+            {
+                int idx = ctx.Bars.Count - 1;
+                if (idx >= 0)
+                {
+                    double atrVal = ctx.Atr.Result[idx];
+                    if (!double.IsNaN(atrVal) && atrVal > 0)
+                        return atrVal / sym.PipSize;
+                }
+            }
+            return 10;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  SIGNAL GENERATION
+        // ════════════════════════════════════════════════════════════
+
+        private TradeCandidate EvaluateCandidate(SymbolContext ctx)
+        {
+            if (ctx.Bars == null || ctx.Bars.Count < 60) return null;
+            if (!IsSessionAllowed(Server.TimeInUtc)) return null;
+
+            int index = ctx.Bars.Count - 1;
+            DateTime barTime = ctx.Bars.OpenTimes[index];
+            if (barTime == ctx.LastProcessedBarTime) return null;
+            ctx.LastProcessedBarTime = barTime;
+
+            UpdateSpreadProfile(ctx);
+            if (!IsSpreadTradeable(ctx)) return null;
+
+            // ── Update all engines ──
+            double high = ctx.Bars.HighPrices[index];
+            double low = ctx.Bars.LowPrices[index];
+            double close = ctx.Bars.ClosePrices[index];
+            double open = ctx.Bars.OpenPrices[index];
+            double prevClose = index > 0 ? ctx.Bars.ClosePrices[index - 1] : close;
+            double tickVol = ctx.Bars.TickVolumes[index];
+
+            double atrVal = ctx.Atr != null ? ctx.Atr.Result[index] : 0;
+            if (double.IsNaN(atrVal)) atrVal = 0;
+            double atrPips = atrVal > 0 ? atrVal / ctx.Symbol.PipSize : 10;
+
+            ctx.AdxCalc.Update(high, low, close);
+            ctx.DonchianCalc.Update(high, low);
+            ctx.BollingerCalc.Update(close);
+            ctx.RsiCalc.Update(close);
+            ctx.VolEngine.Update(atrVal, high, low, tickVol, ctx.Symbol.PipSize);
+
+            if (ctx.StructureState == null)
+                ctx.StructureState = new MarketStructureState();
+            MarketStructureEngine.Update(
+                ctx.StructureState, index,
+                i => ctx.Bars.OpenPrices[i], i => ctx.Bars.HighPrices[i],
+                i => ctx.Bars.LowPrices[i], i => ctx.Bars.ClosePrices[i],
+                SwingLookback, ctx.Symbol.PipSize, 2.0);
+
+            GetHtfValues(ctx, index, out double htfFast, out double htfSlow);
+
+            var regime = AdaptiveRegimeEngine.Evaluate(
+                ctx.AdxCalc.Value, ctx.AdxCalc.PlusDI, ctx.AdxCalc.MinusDI,
+                ctx.DonchianCalc.UpperBand, ctx.DonchianCalc.LowerBand, ctx.DonchianCalc.MidBand,
+                close, htfFast, htfSlow, ctx.StructureState.PrevailingTrend);
+
+            if (regime.Strategy == StrategyMode.NoTrade) return null;
+
+            ctx.LifecycleRule.MinBarsBetweenSameDirection = _riskProfile.CooldownBars;
+
+            // ── Entry logic by strategy mode ──
+            TradeType? signal = null;
+            double confluenceScore = 0;
+
+            if (regime.Strategy == StrategyMode.TrendFollowing)
+                signal = EvaluateTrendSignal(ctx, regime, close, high, low, atrPips, index, out confluenceScore);
+            else if (regime.Strategy == StrategyMode.MeanReversion)
+                signal = EvaluateMeanReversionSignal(ctx, regime, close, index, out confluenceScore);
+
+            if (signal == null) return null;
+
+            if (signal == TradeType.Buy && (!AllowLong || !regime.AllowLong)) return null;
+            if (signal == TradeType.Sell && (!AllowShort || !regime.AllowShort)) return null;
+
+            if (signal == TradeType.Buy && !SignalLifecycleEngine.CanEmitBuy(index, ctx.LifecycleState, ctx.LifecycleRule))
+                return null;
+            if (signal == TradeType.Sell && !SignalLifecycleEngine.CanEmitSell(index, ctx.LifecycleState, ctx.LifecycleRule))
+                return null;
+
+            return new TradeCandidate
+            {
+                Context = ctx,
+                TradeType = signal.Value,
+                Regime = regime,
+                AtrPips = atrPips,
+                ConfluenceScore = confluenceScore,
+                Index = index
+            };
+        }
+
+        /// <summary>
+        /// Trend Following: Donchian breakout + BOS + OB/FVG/sweep confluence.
+        /// Requires structural confirmation — not just a crossover.
+        /// </summary>
+        private TradeType? EvaluateTrendSignal(
+            SymbolContext ctx, AdaptiveRegimeState regime,
+            double close, double high, double low, double atrPips,
+            int index, out double confluenceScore)
+        {
+            confluenceScore = 0;
+            var state = ctx.StructureState;
+            if (state == null) return null;
+
+            // ── LONG ──
+            if (regime.TrendDirection == StructureDirection.Bullish)
+            {
+                bool recentBosUp = state.LastBreak != null
+                    && state.LastBreak.Direction == StructureDirection.Bullish
+                    && state.LastBreak.BarIndex >= index - 5;
+
+                bool donchianBreakout = close >= ctx.DonchianCalc.UpperBand && ctx.DonchianCalc.IsReady;
+
+                if (!recentBosUp && !donchianBreakout) return null;
+
+                confluenceScore = 1.0;
+                if (recentBosUp) confluenceScore += 1.0;
+                if (donchianBreakout) confluenceScore += 0.5;
+
+                // Bullish order block (pullback into demand zone)
+                foreach (var ob in state.ActiveOrderBlocks)
+                {
+                    if (!ob.Mitigated && ob.Direction == StructureDirection.Bullish && low <= ob.High && close > ob.Low)
+                    {
+                        confluenceScore += 1.5;
+                        break;
+                    }
+                }
+
+                // Bullish FVG (price filling gap from below)
+                foreach (var fvg in state.ActiveFvgs)
+                {
+                    if (!fvg.Filled && fvg.Direction == StructureDirection.Bullish && low <= fvg.High && close > fvg.Low)
+                    {
+                        confluenceScore += 1.0;
+                        break;
+                    }
+                }
+
+                // Liquidity sweep below (stop hunt reversal)
+                foreach (var sweep in state.RecentSweeps)
+                {
+                    if (sweep.Direction != StructureDirection.Bullish && sweep.BarIndex >= index - 5)
+                    {
+                        confluenceScore += 1.5;
+                        break;
+                    }
+                }
+
+                confluenceScore += Math.Min(1.0, regime.AdxValue / 50.0);
+
+                if (confluenceScore < MinConfluence) return null;
+                return TradeType.Buy;
             }
 
-            if (sellSignal && SignalLifecycleEngine.CanEmitSell(index, context.LifecycleState, context.LifecycleRule))
+            // ── SHORT ──
+            if (regime.TrendDirection == StructureDirection.Bearish)
             {
-                return new TradeCandidate
+                bool recentBosDown = state.LastBreak != null
+                    && state.LastBreak.Direction == StructureDirection.Bearish
+                    && state.LastBreak.BarIndex >= index - 5;
+
+                bool donchianBreakdown = close <= ctx.DonchianCalc.LowerBand && ctx.DonchianCalc.IsReady;
+
+                if (!recentBosDown && !donchianBreakdown) return null;
+
+                confluenceScore = 1.0;
+                if (recentBosDown) confluenceScore += 1.0;
+                if (donchianBreakdown) confluenceScore += 0.5;
+
+                foreach (var ob in state.ActiveOrderBlocks)
                 {
-                    Context = context,
-                    TradeType = TradeType.Sell,
-                    Regime = regime,
-                    VolatilityPerBarPips = volatilityPerBarPips,
-                    SessionActivityRatio = sessionActivityRatio,
-                    Index = index
-                };
+                    if (!ob.Mitigated && ob.Direction == StructureDirection.Bearish && high >= ob.Low && close < ob.High)
+                    {
+                        confluenceScore += 1.5;
+                        break;
+                    }
+                }
+
+                foreach (var fvg in state.ActiveFvgs)
+                {
+                    if (!fvg.Filled && fvg.Direction == StructureDirection.Bearish && high >= fvg.Low && close < fvg.High)
+                    {
+                        confluenceScore += 1.0;
+                        break;
+                    }
+                }
+
+                foreach (var sweep in state.RecentSweeps)
+                {
+                    if (sweep.Direction == StructureDirection.Bullish && sweep.BarIndex >= index - 5)
+                    {
+                        confluenceScore += 1.5;
+                        break;
+                    }
+                }
+
+                confluenceScore += Math.Min(1.0, regime.AdxValue / 50.0);
+
+                if (confluenceScore < MinConfluence) return null;
+                return TradeType.Sell;
             }
 
             return null;
         }
 
-        private void MarkLifecycle(TradeCandidate candidate)
+        /// <summary>
+        /// Mean Reversion: Bollinger Band extremes + RSI + optional OB support.
+        /// Active only in ranging markets (ADX &lt; 20).
+        /// </summary>
+        private TradeType? EvaluateMeanReversionSignal(
+            SymbolContext ctx, AdaptiveRegimeState regime,
+            double close, int index, out double confluenceScore)
         {
-            if (candidate.TradeType == TradeType.Buy)
-                SignalLifecycleEngine.MarkBuy(candidate.Index, candidate.Context.LifecycleState);
-            else
-                SignalLifecycleEngine.MarkSell(candidate.Index, candidate.Context.LifecycleState);
+            confluenceScore = 0;
+            if (!ctx.BollingerCalc.IsReady) return null;
+
+            double rsi = ctx.RsiCalc.Value;
+
+            // LONG: price at/below lower BB + RSI oversold
+            if (close <= ctx.BollingerCalc.LowerBand && rsi < 35)
+            {
+                confluenceScore = 1.0;
+                if (rsi < 25) confluenceScore += 0.5;
+                if (close < ctx.BollingerCalc.LowerBand) confluenceScore += 0.5;
+
+                if (ctx.StructureState != null)
+                {
+                    foreach (var ob in ctx.StructureState.ActiveOrderBlocks)
+                    {
+                        if (!ob.Mitigated && ob.Direction == StructureDirection.Bullish && close <= ob.High
+                            && close >= ob.Low - (ob.High - ob.Low))
+                        {
+                            confluenceScore += 1.0;
+                            break;
+                        }
+                    }
+                }
+
+                if (confluenceScore < 1.5) return null;
+                return TradeType.Buy;
+            }
+
+            // SHORT: price at/above upper BB + RSI overbought
+            if (close >= ctx.BollingerCalc.UpperBand && rsi > 65)
+            {
+                confluenceScore = 1.0;
+                if (rsi > 75) confluenceScore += 0.5;
+                if (close > ctx.BollingerCalc.UpperBand) confluenceScore += 0.5;
+
+                if (ctx.StructureState != null)
+                {
+                    foreach (var ob in ctx.StructureState.ActiveOrderBlocks)
+                    {
+                        if (!ob.Mitigated && ob.Direction == StructureDirection.Bearish && close >= ob.Low
+                            && close <= ob.High + (ob.High - ob.Low))
+                        {
+                            confluenceScore += 1.0;
+                            break;
+                        }
+                    }
+                }
+
+                if (confluenceScore < 1.5) return null;
+                return TradeType.Sell;
+            }
+
+            return null;
         }
 
-        private bool TryExecute(SymbolContext context, TradeType tradeType, RegimeState regime, double volatilityPerBarPips, double sessionActivityRatio, int index)
+        private void MarkLifecycle(TradeCandidate c)
         {
+            if (c.TradeType == TradeType.Buy)
+                SignalLifecycleEngine.MarkBuy(c.Index, c.Context.LifecycleState);
+            else
+                SignalLifecycleEngine.MarkSell(c.Index, c.Context.LifecycleState);
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  EXECUTION
+        // ════════════════════════════════════════════════════════════
+
+        private bool TryExecute(TradeCandidate candidate)
+        {
+            var ctx = candidate.Context;
+
             if (!EnableAutoExecution)
             {
-                Print("Signal {0} {1} blocked: auto execution OFF. Regime={2}, Strength={3:0.00}, Vol={4:0.0}, Sess={5:0.00}",
-                    context.SymbolName,
-                    tradeType,
-                    regime.Regime,
-                    regime.TrendStrength,
-                    volatilityPerBarPips,
-                    sessionActivityRatio);
+                Print("[SIGNAL] {0} {1} | {2}/{3} | ADX={4:F1} | Confluence={5:F1}",
+                    ctx.SymbolName, candidate.TradeType,
+                    candidate.Regime.Regime, candidate.Regime.Strategy,
+                    candidate.Regime.AdxValue, candidate.ConfluenceScore);
                 return false;
             }
 
-            UpdateSpreadProfile(context);
-            if (!IsSpreadTradeable(context))
+            UpdateSpreadProfile(ctx);
+            if (!IsSpreadTradeable(ctx)) return false;
+
+            // Check all risk limits
+            int tradesToday = GetTradesCountToday();
+            int tradesTodaySymbol = GetTradesCountTodaySymbol(ctx.SymbolName);
+            int concurrent = Positions.Count(p => p.Label == TradeLabel);
+            double dailyPnlPct = GetDailyPnlPct();
+            GetRecentPerformance(out int recentCount, out double recentWinRate);
+
+            if (!RiskProfileEngine.IsTradingAllowed(
+                _riskProfile, tradesToday, tradesTodaySymbol,
+                concurrent, dailyPnlPct, recentCount, recentWinRate))
                 return false;
 
-            var openPositions = Positions.FindAll(TradeLabel, context.SymbolName);
-            if (openPositions.Length >= MaxPositions)
-                return false;
+            if (!CanOpenOnSymbol(ctx.SymbolName)) return false;
 
-            if (GetTradesCountToday() >= MaxTradesPerDay)
-                return false;
+            // Calculate stops
+            double slPips = candidate.AtrPips * SlAtrMultiplier * _riskProfile.SlMultiplier;
+            slPips = Math.Max(MinSlPips, Math.Min(MaxSlPips, slPips));
 
-            if (!CanOpenOnSymbol(context.SymbolName))
-                return false;
+            double tpPips = candidate.AtrPips * TpAtrMultiplier * _riskProfile.TpMultiplier;
+            double minTpPips = slPips * Math.Max(MinRiskReward, _riskProfile.MinRiskReward);
+            tpPips = Math.Max(minTpPips, tpPips);
 
-            ResolveStopsPips(context, index, out double stopLossPips, out double takeProfitPips);
+            // Volume via risk engine
+            double volumeUnits = RiskProfileEngine.CalculateVolume(
+                Account.Equity,
+                _riskProfile.RiskPerTrade,
+                slPips,
+                ctx.Symbol.PipValue,
+                ctx.Symbol.VolumeInUnitsMin,
+                ctx.Symbol.VolumeInUnitsMax,
+                ctx.Symbol.VolumeInUnitsStep);
 
-            double volumeInUnits = GetRequestedVolumeInUnits(context.Symbol, stopLossPips);
-            if (volumeInUnits <= 0)
-                return false;
+            if (volumeUnits <= 0) return false;
+            if (!IsExposureWithinLimits(ctx.Symbol, volumeUnits, slPips)) return false;
 
-            if (!IsExposureWithinLimits(context.Symbol, volumeInUnits, stopLossPips))
-                return false;
-
-            double firstQuote = tradeType == TradeType.Buy ? context.Symbol.Ask : context.Symbol.Bid;
+            // Execute with retry
+            double firstQuote = candidate.TradeType == TradeType.Buy ? ctx.Symbol.Ask : ctx.Symbol.Bid;
             TradeResult result = null;
 
             for (int attempt = 0; attempt < EntryRetryAttempts; attempt++)
             {
-                double currentQuote = tradeType == TradeType.Buy ? context.Symbol.Ask : context.Symbol.Bid;
-                double deviationPips = Math.Abs(currentQuote - firstQuote) / context.Symbol.PipSize;
-                if (deviationPips > MaxEntryDeviationPips)
+                double currentQuote = candidate.TradeType == TradeType.Buy ? ctx.Symbol.Ask : ctx.Symbol.Bid;
+                if (Math.Abs(currentQuote - firstQuote) / ctx.Symbol.PipSize > MaxEntryDeviationPips)
                     return false;
 
-                result = ExecuteMarketOrder(tradeType, context.SymbolName, volumeInUnits, TradeLabel, stopLossPips, takeProfitPips);
-                if (result.IsSuccessful)
-                    break;
-
-                if (IsNonRetriableError(result))
-                    break;
+                result = ExecuteMarketOrder(candidate.TradeType, ctx.SymbolName, volumeUnits,
+                    TradeLabel, slPips, tpPips);
+                if (result.IsSuccessful) break;
+                if (IsNonRetriableError(result)) break;
             }
 
             if (result == null || !result.IsSuccessful)
             {
-                Print("Order failed ({0} {1}): {2}", context.SymbolName, tradeType, result != null ? result.Error.ToString() : "Unknown");
+                Print("Order failed {0} {1}: {2}", ctx.SymbolName, candidate.TradeType,
+                    result != null ? result.Error.ToString() : "Unknown");
                 return false;
             }
 
-            Print("Executed {0} {1} | Regime={2} | Strength={3:0.00} | Spread={4:0.00}",
-                context.SymbolName,
-                tradeType,
-                regime.Regime,
-                regime.TrendStrength,
-                GetSpreadPips(context.Symbol));
+            Print("EXECUTED {0} {1} | {2}/{3} | SL={4:F1} TP={5:F1} | ADX={6:F1} | Conf={7:F1}",
+                ctx.SymbolName, candidate.TradeType,
+                candidate.Regime.Regime, candidate.Regime.Strategy,
+                slPips, tpPips, candidate.Regime.AdxValue, candidate.ConfluenceScore);
             return true;
         }
 
-        private void ResolveStopsPips(SymbolContext context, int index, out double stopLossPips, out double takeProfitPips)
-        {
-            stopLossPips = StopLossPips;
-            takeProfitPips = TakeProfitPips;
-
-            if (!UseAdaptiveStops || context.Atr == null)
-                return;
-
-            if (index < 0 || index >= context.Bars.Count)
-                return;
-
-            double atrPrice = context.Atr.Result[index];
-            if (double.IsNaN(atrPrice) || atrPrice <= 0)
-                return;
-
-            double atrPips = atrPrice / context.Symbol.PipSize;
-            if (double.IsNaN(atrPips) || atrPips <= 0)
-                return;
-
-            double adaptiveSl = atrPips * StopLossAtrMultiplier;
-            adaptiveSl = Math.Max(MinStopLossPips, Math.Min(MaxStopLossPips, adaptiveSl));
-
-            double adaptiveTp = atrPips * TakeProfitAtrMultiplier;
-            adaptiveTp = Math.Max(MinTakeProfitPips, adaptiveTp);
-            adaptiveTp = Math.Max(adaptiveTp, adaptiveSl * 1.1);
-
-            stopLossPips = adaptiveSl;
-            takeProfitPips = adaptiveTp;
-        }
+        // ════════════════════════════════════════════════════════════
+        //  SUPPORT METHODS
+        // ════════════════════════════════════════════════════════════
 
         private bool IsSessionAllowed(DateTime utcTime)
         {
-            if (!EnableSessionFilter)
-                return true;
-
+            if (!EnableSessionFilter) return true;
             int hour = utcTime.Hour;
-            bool asia = hour >= 0 && hour < 8;
-            bool london = hour >= 7 && hour < 16;
-            bool newYork = hour >= 13 && hour < 22;
 
-            if (TradeAsiaSession && asia)
-                return true;
-            if (TradeLondonSession && london)
-                return true;
-            if (TradeNewYorkSession && newYork)
-                return true;
+            // Sessions can overlap — each is checked independently
+            if (TradeAsiaSession && (hour >= 22 || hour < 7)) return true;
+            if (TradeLondonSession && hour >= 7 && hour < 16) return true;
+            if (TradeNewYorkSession && hour >= 13 && hour < 22) return true;
 
             return false;
         }
 
-        private void UpdateSpreadProfile(SymbolContext context)
+        private void UpdateSpreadProfile(SymbolContext ctx)
         {
-            double spreadPips = GetSpreadPips(context.Symbol);
-            context.RecentSpreadsPips.Enqueue(spreadPips);
-            while (context.RecentSpreadsPips.Count > SpreadProfileWindow)
-                context.RecentSpreadsPips.Dequeue();
+            double spread = GetSpreadPips(ctx.Symbol);
+            ctx.RecentSpreads.Enqueue(spread);
+            while (ctx.RecentSpreads.Count > SpreadProfileWindow)
+                ctx.RecentSpreads.Dequeue();
 
             double sum = 0;
-            foreach (var value in context.RecentSpreadsPips)
-                sum += value;
-
-            context.AverageSpreadPips = context.RecentSpreadsPips.Count > 0 ? sum / context.RecentSpreadsPips.Count : spreadPips;
+            foreach (var v in ctx.RecentSpreads) sum += v;
+            ctx.AvgSpread = ctx.RecentSpreads.Count > 0 ? sum / ctx.RecentSpreads.Count : spread;
         }
 
-        private bool IsSpreadTradeable(SymbolContext context)
+        private bool IsSpreadTradeable(SymbolContext ctx)
         {
-            double spreadPips = GetSpreadPips(context.Symbol);
-            if (spreadPips > MaxSpreadPips)
-                return false;
+            double spread = GetSpreadPips(ctx.Symbol);
+            if (spread > MaxSpreadPips) return false;
+            if (ctx.RecentSpreads.Count < 8) return true;
+            return spread <= Math.Max(0.01, ctx.AvgSpread) * MaxSpreadToAvgRatio;
+        }
 
-            if (context.RecentSpreadsPips.Count < 8)
-                return true;
-
-            double average = Math.Max(0.01, context.AverageSpreadPips);
-            return spreadPips <= average * MaxSpreadToAverageRatio;
+        private double GetSpreadPips(Symbol symbol)
+        {
+            return (symbol.Ask - symbol.Bid) / symbol.PipSize;
         }
 
         private bool IsNonRetriableError(TradeResult result)
         {
-            if (result == null)
-                return false;
-
-            var code = result.Error;
-            return code == ErrorCode.NoMoney ||
-                   code == ErrorCode.BadVolume ||
-                   code == ErrorCode.MarketClosed ||
-                   code == ErrorCode.TechnicalError ||
-                   code == ErrorCode.Disconnected;
+            if (result == null) return false;
+            var c = result.Error;
+            return c == ErrorCode.NoMoney || c == ErrorCode.BadVolume ||
+                   c == ErrorCode.MarketClosed || c == ErrorCode.TechnicalError ||
+                   c == ErrorCode.Disconnected;
         }
 
-        private double GetRequestedVolumeInUnits(Symbol symbol, double stopLossPips)
-        {
-            double requestedVolumeInUnits;
-
-            if (UseDynamicSizing)
-            {
-                double equity = Math.Max(0, Account.Equity);
-                double riskAmount = equity * (RiskPerTradePercent / 100.0);
-                requestedVolumeInUnits = symbol.VolumeForFixedRisk(riskAmount, stopLossPips);
-            }
-            else
-            {
-                requestedVolumeInUnits = symbol.QuantityToVolumeInUnits(VolumeInLots);
-            }
-
-            double maxUnitsByParam = symbol.QuantityToVolumeInUnits(MaxVolumeLots);
-            requestedVolumeInUnits = Math.Min(requestedVolumeInUnits, maxUnitsByParam);
-
-            requestedVolumeInUnits = symbol.NormalizeVolumeInUnits(requestedVolumeInUnits, RoundingMode.Down);
-            if (requestedVolumeInUnits < symbol.VolumeInUnitsMin)
-                return 0;
-
-            return requestedVolumeInUnits;
-        }
-
-        private bool IsExposureWithinLimits(Symbol newTradeSymbol, double newTradeVolumeInUnits, double stopLossPips)
+        private bool IsExposureWithinLimits(Symbol newSym, double newVolUnits, double slPips)
         {
             var positions = Positions.Where(p => p.Label == TradeLabel).ToArray();
 
+            // Gross lots check
             double currentGrossLots = positions.Sum(p =>
             {
-                var positionSymbol = Symbols.GetSymbol(p.SymbolName);
-                return positionSymbol != null ? positionSymbol.VolumeInUnitsToQuantity(p.VolumeInUnits) : 0;
+                var s = Symbols.GetSymbol(p.SymbolName);
+                return s != null ? s.VolumeInUnitsToQuantity(p.VolumeInUnits) : 0;
             });
-            double incomingLots = newTradeSymbol.VolumeInUnitsToQuantity(newTradeVolumeInUnits);
+            double incomingLots = newSym.VolumeInUnitsToQuantity(newVolUnits);
             if (currentGrossLots + incomingLots > MaxGrossExposureLots)
                 return false;
 
-            double currentOpenRisk = positions.Sum(EstimatePositionRiskAmount);
-            double incomingRisk = EstimateRiskAmount(newTradeSymbol, newTradeVolumeInUnits, stopLossPips);
-            double maxAllowedRisk = Account.Equity * (MaxOpenRiskPercent / 100.0);
+            // Risk amount check
+            double currentRisk = positions.Sum(p => EstimatePositionRisk(p));
+            double incomingRisk = slPips * newSym.VolumeInUnitsToQuantity(newVolUnits) * newSym.PipValue;
+            double maxRisk = Account.Equity * _riskProfile.RiskPerTrade * _riskProfile.MaxConcurrentPositions;
 
-            return currentOpenRisk + incomingRisk <= maxAllowedRisk;
+            return currentRisk + incomingRisk <= maxRisk;
         }
 
-        private double EstimatePositionRiskAmount(Position position)
+        private double EstimatePositionRisk(Position pos)
         {
-            var symbol = Symbols.GetSymbol(position.SymbolName);
-            if (symbol == null)
-                return 0;
-
-            double stopDistancePips;
-            if (position.StopLoss.HasValue)
-                stopDistancePips = Math.Abs(position.EntryPrice - position.StopLoss.Value) / symbol.PipSize;
-            else
-                stopDistancePips = StopLossPips;
-
-            return EstimateRiskAmount(symbol, position.VolumeInUnits, stopDistancePips);
-        }
-
-        private double EstimateRiskAmount(Symbol symbol, double volumeInUnits, double stopDistancePips)
-        {
-            double lots = symbol.VolumeInUnitsToQuantity(volumeInUnits);
-            double pipValuePerLot = symbol.PipValue;
-            return Math.Max(0, stopDistancePips) * Math.Max(0, lots) * Math.Max(0, pipValuePerLot);
+            var sym = Symbols.GetSymbol(pos.SymbolName);
+            if (sym == null) return 0;
+            double slDist = pos.StopLoss.HasValue
+                ? Math.Abs(pos.EntryPrice - pos.StopLoss.Value) / sym.PipSize
+                : 20;
+            return slDist * sym.VolumeInUnitsToQuantity(pos.VolumeInUnits) * sym.PipValue;
         }
 
         private bool CanOpenOnSymbol(string symbolName)
@@ -609,8 +842,7 @@ namespace cAlgo.Robots
 
             if (activeSymbols.Contains(symbolName, StringComparer.OrdinalIgnoreCase))
                 return true;
-
-            return activeSymbols.Count < MaxConcurrentSymbols;
+            return activeSymbols.Count < _riskProfile.MaxConcurrentPositions;
         }
 
         private int GetTradesCountToday()
@@ -618,56 +850,36 @@ namespace cAlgo.Robots
             return History.Count(t => t.Label == TradeLabel && t.ClosingTime.Date == _currentTradingDate);
         }
 
-        private bool IsPerformanceGuardTriggered()
+        private int GetTradesCountTodaySymbol(string sym)
         {
-            var closedTrades = History
+            return History.Count(t => t.Label == TradeLabel && t.ClosingTime.Date == _currentTradingDate
+                && string.Equals(t.SymbolName, sym, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private double GetDailyPnlPct()
+        {
+            double closedPnl = History
+                .Where(t => t.Label == TradeLabel && t.ClosingTime.Date == _currentTradingDate)
+                .Sum(t => t.NetProfit);
+            double floatingPnl = Positions.Where(p => p.Label == TradeLabel).Sum(p => p.NetProfit);
+            double equity = Math.Max(1, _startOfDayEquity);
+            return (closedPnl + floatingPnl) / equity;
+        }
+
+        private void GetRecentPerformance(out int count, out double winRate)
+        {
+            var recent = History
                 .Where(t => t.Label == TradeLabel)
                 .OrderByDescending(t => t.ClosingTime)
+                .Take(30)
                 .ToList();
-
-            int closedCount = closedTrades.Count;
-            if (closedCount <= _lastClosedTradesCountForGuard)
-                return false;
-
-            _lastClosedTradesCountForGuard = closedCount;
-
-            var recentTrades = closedTrades.Take(PerformanceGuardWindowTrades).ToList();
-
-            if (recentTrades.Count < Math.Max(5, PerformanceGuardWindowTrades / 2))
-                return false;
-
-            int wins = recentTrades.Count(t => t.NetProfit > 0);
-            double winRatePercent = (double)wins / recentTrades.Count * 100.0;
-
-            double cumulative = 0;
-            double peak = 0;
-            double worstDrawdown = 0;
-
-            foreach (var trade in recentTrades.OrderBy(t => t.ClosingTime))
-            {
-                cumulative += trade.NetProfit;
-                if (cumulative > peak)
-                    peak = cumulative;
-
-                double drawdown = peak - cumulative;
-                if (drawdown > worstDrawdown)
-                    worstDrawdown = drawdown;
-            }
-
-            double equityBase = Math.Max(1.0, Account.Equity);
-            double worstDrawdownPercent = worstDrawdown / equityBase * 100.0;
-
-            return winRatePercent < PerformanceMinWinRatePercent || worstDrawdownPercent > PerformanceMaxWindowDrawdownPercent;
+            count = recent.Count;
+            winRate = count > 0 ? (double)recent.Count(t => t.NetProfit > 0) / count : 0.5;
         }
 
-        private int GetClosedTradesCount()
+        private bool IsDailyDrawdownBreached()
         {
-            return History.Count(t => t.Label == TradeLabel);
-        }
-
-        private double GetSpreadPips(Symbol symbol)
-        {
-            return (symbol.Ask - symbol.Bid) / symbol.PipSize;
+            return GetDailyPnlPct() <= -_riskProfile.MaxDailyDrawdownPct;
         }
 
         private void HandleDayRollover()
@@ -677,122 +889,48 @@ namespace cAlgo.Robots
             {
                 _currentTradingDate = today;
                 _dailyLockTriggered = false;
+                _startOfDayEquity = Account.Equity;
             }
-        }
-
-        private bool IsDailyLossLimitReached()
-        {
-            double closedPnl = History
-                .Where(t => t.Label == TradeLabel && t.ClosingTime.Date == _currentTradingDate)
-                .Sum(t => t.NetProfit);
-
-            double floatingPnl = Positions
-                .Where(p => p.Label == TradeLabel)
-                .Sum(p => p.NetProfit);
-
-            double totalPnl = closedPnl + floatingPnl;
-            return totalPnl <= -Math.Abs(MaxDailyLoss);
         }
 
         private void CloseBotPositions()
         {
-            var positions = Positions.Where(p => p.Label == TradeLabel).ToArray();
-            foreach (var position in positions)
-                ClosePosition(position);
+            foreach (var p in Positions.Where(p => p.Label == TradeLabel).ToArray())
+                ClosePosition(p);
         }
 
-        private void UpdateSwingStructure(SymbolContext context, int index)
+        private void GetHtfValues(SymbolContext ctx, int index, out double htfFast, out double htfSlow)
         {
-            int swingIndex = index - SwingLookback;
-            if (swingIndex <= SwingLookback || swingIndex + SwingLookback >= context.Bars.Count)
+            htfFast = ctx.Bars.ClosePrices[index];
+            htfSlow = ctx.Bars.ClosePrices[index];
+
+            if (!UseHtfFilter || ctx.HtfBars == null || ctx.HtfFastMa == null || ctx.HtfSlowMa == null)
                 return;
 
-            if (IsSwingHigh(context.Bars, swingIndex))
-                context.LastSwingHigh = context.Bars.HighPrices[swingIndex];
+            int htfIdx = ctx.HtfBars.OpenTimes.GetIndexByTime(ctx.Bars.OpenTimes[index]);
+            if (htfIdx < 0 || htfIdx >= ctx.HtfBars.Count) return;
 
-            if (IsSwingLow(context.Bars, swingIndex))
-                context.LastSwingLow = context.Bars.LowPrices[swingIndex];
+            htfFast = ctx.HtfFastMa.Result[htfIdx];
+            htfSlow = ctx.HtfSlowMa.Result[htfIdx];
         }
 
-        private bool IsSwingHigh(Bars bars, int index)
-        {
-            for (int i = 1; i <= SwingLookback; i++)
-            {
-                if (bars.HighPrices[index] <= bars.HighPrices[index - i] || bars.HighPrices[index] <= bars.HighPrices[index + i])
-                    return false;
-            }
-
-            return true;
-        }
-
-        private bool IsSwingLow(Bars bars, int index)
-        {
-            for (int i = 1; i <= SwingLookback; i++)
-            {
-                if (bars.LowPrices[index] >= bars.LowPrices[index - i] || bars.LowPrices[index] >= bars.LowPrices[index + i])
-                    return false;
-            }
-
-            return true;
-        }
-
-        private void GetHtfValues(SymbolContext context, int index, out double htfFast, out double htfSlow)
-        {
-            htfFast = context.Bars.ClosePrices[index];
-            htfSlow = context.Bars.ClosePrices[index];
-
-            if (!UseHigherTimeframeFilter || context.HigherTimeframeBars == null || context.HigherTimeframeFastMa == null || context.HigherTimeframeSlowMa == null)
-                return;
-
-            int htfIndex = context.HigherTimeframeBars.OpenTimes.GetIndexByTime(context.Bars.OpenTimes[index]);
-            if (htfIndex < 0 || htfIndex >= context.HigherTimeframeBars.Count)
-                return;
-
-            htfFast = context.HigherTimeframeFastMa.Result[htfIndex];
-            htfSlow = context.HigherTimeframeSlowMa.Result[htfIndex];
-        }
-
-        private void UpdateRegimeNormalization(SymbolContext context, int index, out double volatilityPerBarPips, out double sessionActivityRatio)
-        {
-            double rangePips = Math.Max(context.Bars.HighPrices[index] - context.Bars.LowPrices[index], context.Symbol.PipSize) / context.Symbol.PipSize;
-            context.RecentRangePips.Enqueue(rangePips);
-            while (context.RecentRangePips.Count > RegimeVolatilityWindow)
-                context.RecentRangePips.Dequeue();
-
-            double rangeSum = 0;
-            foreach (var value in context.RecentRangePips)
-                rangeSum += value;
-            volatilityPerBarPips = context.RecentRangePips.Count > 0 ? rangeSum / context.RecentRangePips.Count : 1.0;
-
-            double tickVolume = context.Bars.TickVolumes[index];
-            context.RecentTickVolumes.Enqueue(tickVolume);
-            while (context.RecentTickVolumes.Count > RegimeSessionWindow)
-                context.RecentTickVolumes.Dequeue();
-
-            double volumeSum = 0;
-            foreach (var value in context.RecentTickVolumes)
-                volumeSum += value;
-
-            double averageVolume = context.RecentTickVolumes.Count > 0 ? volumeSum / context.RecentTickVolumes.Count : Math.Max(1.0, tickVolume);
-            sessionActivityRatio = averageVolume > 0 ? tickVolume / averageVolume : 1.0;
-            sessionActivityRatio = Math.Max(0.25, Math.Min(4.0, sessionActivityRatio));
-        }
+        // ════════════════════════════════════════════════════════════
+        //  SYMBOL RESOLUTION & CONTEXT
+        // ════════════════════════════════════════════════════════════
 
         private List<string> ResolveTradeSymbols()
         {
             if (!EnableSymbolScanner)
                 return new List<string> { SymbolName };
 
-            var parsed = (SymbolsCsv ?? string.Empty)
-                .Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(value => value.Trim())
-                .Where(value => !string.IsNullOrWhiteSpace(value))
+            var parsed = (SymbolsCsv ?? "")
+                .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (parsed.Count == 0)
-                parsed.Add(SymbolName);
-
+            if (parsed.Count == 0) parsed.Add(SymbolName);
             return parsed;
         }
 
@@ -815,65 +953,100 @@ namespace cAlgo.Robots
                 return null;
             }
 
-            var context = new SymbolContext
+            var ctx = new SymbolContext
             {
                 SymbolName = symbolName,
                 Symbol = symbol,
                 Bars = bars,
-                FastMa = Indicators.ExponentialMovingAverage(bars.ClosePrices, FastMaPeriod),
-                SlowMa = Indicators.ExponentialMovingAverage(bars.ClosePrices, SlowMaPeriod),
                 Atr = Indicators.AverageTrueRange(bars, AtrPeriod, MovingAverageType.Exponential),
+                AdxCalc = new AdxCalculator(AdxPeriod),
+                DonchianCalc = new DonchianCalculator(DonchianPeriod),
+                BollingerCalc = new BollingerCalculator(BollingerPeriod, BollingerStdDev),
+                RsiCalc = new RsiCalculator(RsiPeriod),
+                VolEngine = new VolatilityEngine(AtrPeriod),
+                StructureState = new MarketStructureState(),
                 LifecycleState = new SignalLifecycleState(),
                 LifecycleRule = new SignalLifecycleRule
                 {
                     MinBarsBetweenSameDirection = SignalCooldownBars,
-                    MaxSignalAgeBars = SignalCooldownBars * 2
+                    MaxSignalAgeBars = SignalCooldownBars * 3
                 }
             };
 
-            if (UseHigherTimeframeFilter)
+            if (UseHtfFilter)
             {
-                context.HigherTimeframeBars = MarketData.GetBars(HigherTimeframe, symbolName);
-                if (context.HigherTimeframeBars != null)
+                ctx.HtfBars = MarketData.GetBars(HigherTimeframe, symbolName);
+                if (ctx.HtfBars != null)
                 {
-                    context.HigherTimeframeFastMa = Indicators.ExponentialMovingAverage(context.HigherTimeframeBars.ClosePrices, HigherTimeframeFastMaPeriod);
-                    context.HigherTimeframeSlowMa = Indicators.ExponentialMovingAverage(context.HigherTimeframeBars.ClosePrices, HigherTimeframeSlowMaPeriod);
+                    ctx.HtfFastMa = Indicators.ExponentialMovingAverage(
+                        ctx.HtfBars.ClosePrices, HtfFastMaPeriod);
+                    ctx.HtfSlowMa = Indicators.ExponentialMovingAverage(
+                        ctx.HtfBars.ClosePrices, HtfSlowMaPeriod);
                 }
             }
 
-            return context;
+            // ── Warm up engines with historical bars ──
+            int warmup = Math.Min(bars.Count - 1, 250);
+            for (int i = Math.Max(0, bars.Count - 1 - warmup); i < bars.Count - 1; i++)
+            {
+                ctx.AdxCalc.Update(bars.HighPrices[i], bars.LowPrices[i], bars.ClosePrices[i]);
+                ctx.DonchianCalc.Update(bars.HighPrices[i], bars.LowPrices[i]);
+                ctx.BollingerCalc.Update(bars.ClosePrices[i]);
+                ctx.RsiCalc.Update(bars.ClosePrices[i]);
+
+                double atr = ctx.Atr.Result[i];
+                if (!double.IsNaN(atr) && atr > 0)
+                    ctx.VolEngine.Update(atr, bars.HighPrices[i], bars.LowPrices[i], bars.TickVolumes[i], symbol.PipSize);
+
+                MarketStructureEngine.Update(
+                    ctx.StructureState, i,
+                    j => bars.OpenPrices[j], j => bars.HighPrices[j],
+                    j => bars.LowPrices[j], j => bars.ClosePrices[j],
+                    SwingLookback, symbol.PipSize, 2.0);
+            }
+
+            return ctx;
         }
+
+        // ════════════════════════════════════════════════════════════
+        //  INNER TYPES
+        // ════════════════════════════════════════════════════════════
 
         private sealed class SymbolContext
         {
             public string SymbolName { get; set; }
             public Symbol Symbol { get; set; }
             public Bars Bars { get; set; }
-            public MovingAverage FastMa { get; set; }
-            public MovingAverage SlowMa { get; set; }
             public AverageTrueRange Atr { get; set; }
-            public Bars HigherTimeframeBars { get; set; }
-            public MovingAverage HigherTimeframeFastMa { get; set; }
-            public MovingAverage HigherTimeframeSlowMa { get; set; }
-            public Queue<double> RecentRangePips { get; } = new Queue<double>();
-            public Queue<double> RecentTickVolumes { get; } = new Queue<double>();
-            public Queue<double> RecentSpreadsPips { get; } = new Queue<double>();
+            public Bars HtfBars { get; set; }
+            public MovingAverage HtfFastMa { get; set; }
+            public MovingAverage HtfSlowMa { get; set; }
+
+            // Custom calculators
+            public AdxCalculator AdxCalc { get; set; }
+            public DonchianCalculator DonchianCalc { get; set; }
+            public BollingerCalculator BollingerCalc { get; set; }
+            public RsiCalculator RsiCalc { get; set; }
+            public VolatilityEngine VolEngine { get; set; }
+            public MarketStructureState StructureState { get; set; }
+
+            // Lifecycle
             public SignalLifecycleState LifecycleState { get; set; }
             public SignalLifecycleRule LifecycleRule { get; set; }
-            public double LastSwingHigh { get; set; } = double.NaN;
-            public double LastSwingLow { get; set; } = double.NaN;
-            public MarketRegime PreviousRegime { get; set; } = MarketRegime.Unknown;
+
+            // Spread tracking
+            public Queue<double> RecentSpreads { get; } = new Queue<double>();
+            public double AvgSpread { get; set; }
             public DateTime LastProcessedBarTime { get; set; } = DateTime.MinValue;
-            public double AverageSpreadPips { get; set; }
         }
 
         private sealed class TradeCandidate
         {
             public SymbolContext Context { get; set; }
             public TradeType TradeType { get; set; }
-            public RegimeState Regime { get; set; }
-            public double VolatilityPerBarPips { get; set; }
-            public double SessionActivityRatio { get; set; }
+            public AdaptiveRegimeState Regime { get; set; }
+            public double AtrPips { get; set; }
+            public double ConfluenceScore { get; set; }
             public int Index { get; set; }
         }
     }
