@@ -1,0 +1,40 @@
+{
+  "exportTime": "2026-02-16 18:25:01 UTC",
+  "label": "ApexFlowExec",
+  "dateRange": {
+    "from": "2025-01-27",
+    "to": "2026-02-13",
+    "tradingDays": 383
+  },
+  "account": {
+    "startingBalance": 10000.00,
+    "endingBalance": 10845.30,
+    "endingEquity": 11287.75,
+    "returnPct": 8.45
+  },
+  "performance": {
+    "totalTrades": 418,
+    "wins": 208,
+    "losses": 210,
+    "winRate": 49.76,
+    "netProfit": 845.30,
+    "grossWins": 12386.76,
+    "grossLosses": 11541.46,
+    "profitFactor": 1.0732,
+    "expectancy": 2.02,
+    "avgWin": 59.55,
+    "avgLoss": 54.96,
+    "totalPips": 24877.6,
+    "avgPipsPerTrade": 59.5,
+    "maxDrawdown": 1927.69,
+    "maxDrawdownPct": 17.82,
+    "avgTradeDurationMins": 2380
+  },
+  "symbols": ["EURUSD", "GBPUSD", "US30", "XAUUSD"],
+  "perSymbol": {
+    "EURUSD": { "trades": 85, "wins": 49, "winRate": 57.6, "netProfit": -134.95 },
+    "GBPUSD": { "trades": 105, "wins": 62, "winRate": 59.0, "netProfit": -355.28 },
+    "US30": { "trades": 93, "wins": 36, "winRate": 38.7, "netProfit": -619.20 },
+    "XAUUSD": { "trades": 135, "wins": 61, "winRate": 45.2, "netProfit": 1954.73 }
+  }
+}
