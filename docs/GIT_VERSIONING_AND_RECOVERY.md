@@ -27,6 +27,12 @@ This workspace includes scripts for frequent checkpoints and fast rollback:
 GitHub workflow:
 
 - `.github/workflows/release.yml`: publishes GitHub Release automatically on `v*.*.*` tag push
+- `.github/workflows/ci.yml`: validates builds on push/PR for `main` and `dev`
+
+Branch protection helper:
+
+- `scripts/apply_branch_protection.ps1`: applies protection rules to `main`/`dev` via GitHub API
+- `docs/BRANCH_PROTECTION.md`: recommended rule set and verification checklist
 
 ## Recommended Workflow
 

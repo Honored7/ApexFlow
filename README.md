@@ -18,6 +18,7 @@ This workspace contains two production-oriented cTrader components:
 - `docs/MODULE_REFERENCE.md`
 - `docs/OPERATIONS_RUNBOOK.md`
 - `docs/GIT_VERSIONING_AND_RECOVERY.md`
+- `docs/BRANCH_PROTECTION.md`
 
 ## Quick Start
 
