@@ -185,6 +185,7 @@ namespace cAlgo.Indicators
 
         // Regime
         private string _regimeLabelName;
+        private string _regimeDirLabelName;
 
         // Signal cooldown
         private int _lastSignalIndex = -100;
@@ -908,23 +909,28 @@ namespace cAlgo.Indicators
         {
             if (_regimeLabelName != null)
                 Chart.RemoveObject(_regimeLabelName);
+            if (_regimeDirLabelName != null)
+                Chart.RemoveObject(_regimeDirLabelName);
 
             double adx = _adxCalc.Value;
             double rsi = _rsiCalc.Value;
+            bool isBullDir = _adxCalc.PlusDI > _adxCalc.MinusDI;
 
-            // Classify
+            // Classify regime + pick color that reflects BOTH regime AND direction
             string regimeText;
             Color regimeColor;
 
             if (adx >= 30)
             {
                 regimeText = "STRONG TREND";
-                regimeColor = Color.Lime;
+                regimeColor = isBullDir ? Color.Lime : Color.FromArgb(255, 255, 60, 60);
             }
             else if (adx >= 20)
             {
                 regimeText = "TREND";
-                regimeColor = Color.DeepSkyBlue;
+                regimeColor = isBullDir
+                    ? Color.FromArgb(255, 0, 200, 120)
+                    : Color.FromArgb(255, 230, 100, 80);
             }
             else if (adx >= 15)
             {
@@ -937,21 +943,36 @@ namespace cAlgo.Indicators
                 regimeColor = Color.Gray;
             }
 
-            // Direction
+            // Direction arrow + color
             string dirText;
+            Color dirColor;
             if (adx >= 20)
-                dirText = _adxCalc.PlusDI > _adxCalc.MinusDI ? " ▲ BULL" : " ▼ BEAR";
+            {
+                dirText = isBullDir ? " ▲ BULL" : " ▼ BEAR";
+                dirColor = isBullDir ? Color.Lime : Color.FromArgb(255, 255, 60, 60);
+            }
             else
+            {
                 dirText = " ─ NEUTRAL";
+                dirColor = Color.Gray;
+            }
 
-            string full = regimeText + " | ADX " + adx.ToString("F1") + dirText
-                + " | RSI " + rsi.ToString("F1");
+            // Line 1: regime + ADX (regime color)
+            string line1 = regimeText + " | ADX " + adx.ToString("F1");
+            // Line 2: direction + RSI (direction color)
+            string line2 = dirText + " | RSI " + rsi.ToString("F1");
 
             _regimeLabelName = "RegimeLabel";
-            var lbl = Chart.DrawStaticText(_regimeLabelName, full,
+            var lbl = Chart.DrawStaticText(_regimeLabelName, line1,
                 VerticalAlignment.Top, HorizontalAlignment.Right, regimeColor);
             lbl.FontSize = 10;
             lbl.IsBold = true;
+
+            _regimeDirLabelName = "RegimeDirLabel";
+            var dirLbl = Chart.DrawStaticText(_regimeDirLabelName, "\n" + line2,
+                VerticalAlignment.Top, HorizontalAlignment.Right, dirColor);
+            dirLbl.FontSize = 10;
+            dirLbl.IsBold = true;
         }
 
         // ═══════════════════════════════════════════════════════════════
