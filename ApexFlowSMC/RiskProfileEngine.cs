@@ -77,12 +77,12 @@ namespace cAlgo.Indicators
                         SlMultiplier = 1.2,             // slightly wider SL
                         TpMultiplier = 1.0,
                         MinRiskReward = 2.5,
-                        BreakevenAtR = 0.8,
+                        BreakevenAtR = 1.2,             // don't BE too early
                         PartialCloseFraction = 0.5,
-                        PartialCloseAtR = 1.5,
+                        PartialCloseAtR = 2.0,          // let winners develop
                         MinWinRateGuard = 0.25,
                         MinTradesForGuard = 15,
-                        CooldownBars = 6
+                        CooldownBars = 10
                     };
 
                 case RiskProfileType.Moderate:
@@ -96,12 +96,12 @@ namespace cAlgo.Indicators
                         SlMultiplier = 1.0,
                         TpMultiplier = 1.0,
                         MinRiskReward = 2.0,
-                        BreakevenAtR = 0.6,
+                        BreakevenAtR = 1.0,             // give room to breathe
                         PartialCloseFraction = 0.5,
-                        PartialCloseAtR = 1.0,
+                        PartialCloseAtR = 1.5,          // let winners develop
                         MinWinRateGuard = 0.28,
                         MinTradesForGuard = 12,
-                        CooldownBars = 4
+                        CooldownBars = 8
                     };
 
                 case RiskProfileType.Aggressive:
@@ -115,9 +115,9 @@ namespace cAlgo.Indicators
                         SlMultiplier = 0.8,             // tighter SL
                         TpMultiplier = 1.2,             // wider TP
                         MinRiskReward = 1.5,
-                        BreakevenAtR = 0.5,
+                        BreakevenAtR = 0.8,             // moved from 0.5
                         PartialCloseFraction = 0.4,
-                        PartialCloseAtR = 0.8,
+                        PartialCloseAtR = 1.2,          // moved from 0.8
                         MinWinRateGuard = 0.22,
                         MinTradesForGuard = 10,
                         CooldownBars = 3

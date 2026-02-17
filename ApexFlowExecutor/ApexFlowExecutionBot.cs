@@ -72,7 +72,7 @@ namespace cAlgo.Robots
         [Parameter("SL ATR Multiplier", Group = "Stops", DefaultValue = 1.8, MinValue = 0.5, MaxValue = 10)]
         public double SlAtrMultiplier { get; set; }
 
-        [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 3.5, MinValue = 0.5, MaxValue = 20)]
+        [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 5.0, MinValue = 0.5, MaxValue = 20)]
         public double TpAtrMultiplier { get; set; }
 
         [Parameter("MeanRev SL ATR Mult", Group = "Stops", DefaultValue = 1.2, MinValue = 0.3, MaxValue = 5)]
@@ -125,7 +125,7 @@ namespace cAlgo.Robots
         [Parameter("Swing Lookback", Group = "Regime", DefaultValue = 5, MinValue = 2, MaxValue = 20)]
         public int SwingLookback { get; set; }
 
-        [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 4, MinValue = 1, MaxValue = 100)]
+        [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 8, MinValue = 1, MaxValue = 100)]
         public int SignalCooldownBars { get; set; }
 
         [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.5, MinValue = 0.5, MaxValue = 10)]
@@ -557,14 +557,30 @@ namespace cAlgo.Robots
             var state = ctx.StructureState;
             if (state == null) return null;
 
+            // Candle strength filter — reject indecisive bars
+            double barRange = high - low;
+            if (barRange <= 0) return null;
+            double bodyRatio = (close - low) / barRange;  // 1.0 = close at high, 0.0 = close at low
+
             // ── LONG ──
             if (regime.TrendDirection == StructureDirection.Bullish)
             {
+                // Require bullish candle: close in upper 40% of bar
+                if (bodyRatio < 0.6) return null;
+
                 bool recentBosUp = state.LastBreak != null
                     && state.LastBreak.Direction == StructureDirection.Bullish
-                    && state.LastBreak.BarIndex >= index - 5;
+                    && state.LastBreak.BarIndex >= index - 3;
 
                 bool donchianBreakout = close >= ctx.DonchianCalc.UpperBand && ctx.DonchianCalc.IsReady;
+
+                // Fresh breakout: require previous bar was inside the channel
+                if (donchianBreakout && index > 0)
+                {
+                    double prevHigh = ctx.Bars.HighPrices[index - 1];
+                    if (prevHigh >= ctx.DonchianCalc.UpperBand)
+                        donchianBreakout = false; // not fresh, price was already above
+                }
 
                 if (!recentBosUp && !donchianBreakout) return null;
 
@@ -611,11 +627,22 @@ namespace cAlgo.Robots
             // ── SHORT ──
             if (regime.TrendDirection == StructureDirection.Bearish)
             {
+                // Require bearish candle: close in lower 40% of bar
+                if (bodyRatio > 0.4) return null;
+
                 bool recentBosDown = state.LastBreak != null
                     && state.LastBreak.Direction == StructureDirection.Bearish
-                    && state.LastBreak.BarIndex >= index - 5;
+                    && state.LastBreak.BarIndex >= index - 3;
 
                 bool donchianBreakdown = close <= ctx.DonchianCalc.LowerBand && ctx.DonchianCalc.IsReady;
+
+                // Fresh breakdown: require previous bar was inside the channel
+                if (donchianBreakdown && index > 0)
+                {
+                    double prevLow = ctx.Bars.LowPrices[index - 1];
+                    if (prevLow <= ctx.DonchianCalc.LowerBand)
+                        donchianBreakdown = false; // not fresh
+                }
 
                 if (!recentBosDown && !donchianBreakdown) return null;
 
@@ -838,8 +865,11 @@ namespace cAlgo.Robots
             if (!EnableSessionFilter) return true;
             int hour = utcTime.Hour;
 
+            // Exclude daily rollover hour (22:00-22:59 UTC) — wide spreads, whipsaw
+            if (hour == 22) return false;
+
             // Sessions can overlap — each is checked independently
-            if (TradeAsiaSession && (hour >= 22 || hour < 7)) return true;
+            if (TradeAsiaSession && (hour >= 23 || hour < 7)) return true;  // skip rollover hour
             if (TradeLondonSession && hour >= 7 && hour < 16) return true;
             if (TradeNewYorkSession && hour >= 13 && hour < 22) return true;
 
