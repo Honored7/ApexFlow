@@ -107,17 +107,17 @@ namespace cAlgo.Indicators
                 case RiskProfileType.Aggressive:
                     return new RiskProfile
                     {
-                        RiskPerTrade = 0.015,           // 1.5%
+                        RiskPerTrade = 0.01,            // 1.0%
                         MaxTradesPerDayPerSymbol = 5,
                         MaxTotalTradesPerDay = 12,
                         MaxDailyDrawdownPct = 0.04,     // 4%
                         MaxConcurrentPositions = 6,
-                        SlMultiplier = 0.8,             // tighter SL
+                        SlMultiplier = 0.85,            // tighter SL
                         TpMultiplier = 1.2,             // wider TP
                         MinRiskReward = 1.5,
-                        BreakevenAtR = 0.8,             // moved from 0.5
-                        PartialCloseFraction = 0.4,
-                        PartialCloseAtR = 1.2,          // moved from 0.8
+                        BreakevenAtR = 1.0,             // give winners room
+                        PartialCloseFraction = 0.3,     // keep 70% riding
+                        PartialCloseAtR = 1.5,          // let winners develop
                         MinWinRateGuard = 0.22,
                         MinTradesForGuard = 10,
                         CooldownBars = 3

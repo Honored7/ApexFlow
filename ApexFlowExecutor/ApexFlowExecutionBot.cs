@@ -19,7 +19,7 @@ namespace cAlgo.Robots
         [Parameter("Symbols CSV", Group = "Execution", DefaultValue = "EURUSD,GBPUSD,XAUUSD")]
         public string SymbolsCsv { get; set; }
 
-        [Parameter("Enable Auto Execution", Group = "Execution", DefaultValue = false)]
+        [Parameter("Enable Auto Execution", Group = "Execution", DefaultValue = true)]
         public bool EnableAutoExecution { get; set; }
 
         [Parameter("Trade Label", Group = "Execution", DefaultValue = "ApexFlowExec")]
@@ -47,7 +47,7 @@ namespace cAlgo.Robots
         public bool AllowShort { get; set; }
 
         // ── Risk Profile ───────────────────────────────────────────
-        [Parameter("Risk Profile", Group = "Risk", DefaultValue = 1)]
+        [Parameter("Risk Profile", Group = "Risk", DefaultValue = 2)]
         public int RiskProfileIndex { get; set; }
 
         [Parameter("Custom Risk %", Group = "Risk", DefaultValue = 0.75, MinValue = 0.05, MaxValue = 5.0)]
@@ -72,7 +72,7 @@ namespace cAlgo.Robots
         [Parameter("SL ATR Multiplier", Group = "Stops", DefaultValue = 1.8, MinValue = 0.5, MaxValue = 10)]
         public double SlAtrMultiplier { get; set; }
 
-        [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 5.0, MinValue = 0.5, MaxValue = 20)]
+        [Parameter("TP ATR Multiplier", Group = "Stops", DefaultValue = 3.5, MinValue = 0.5, MaxValue = 20)]
         public double TpAtrMultiplier { get; set; }
 
         [Parameter("MeanRev SL ATR Mult", Group = "Stops", DefaultValue = 1.2, MinValue = 0.3, MaxValue = 5)]
@@ -87,7 +87,7 @@ namespace cAlgo.Robots
         [Parameter("Max SL (pips)", Group = "Stops", DefaultValue = 100, MinValue = 5, MaxValue = 5000)]
         public double MaxSlPips { get; set; }
 
-        [Parameter("Min R:R", Group = "Stops", DefaultValue = 1.8, MinValue = 1.0, MaxValue = 10)]
+        [Parameter("Min R:R", Group = "Stops", DefaultValue = 1.5, MinValue = 1.0, MaxValue = 10)]
         public double MinRiskReward { get; set; }
 
         // ── Trailing ───────────────────────────────────────────────
@@ -97,13 +97,13 @@ namespace cAlgo.Robots
         [Parameter("Chandelier Multiplier", Group = "Trailing", DefaultValue = 2.5, MinValue = 1.0, MaxValue = 6.0)]
         public double ChandelierMult { get; set; }
 
-        [Parameter("Breakeven at R", Group = "Trailing", DefaultValue = 0.6, MinValue = 0.2, MaxValue = 3.0)]
+        [Parameter("Breakeven at R", Group = "Trailing", DefaultValue = 1.0, MinValue = 0.2, MaxValue = 3.0)]
         public double BreakevenAtR { get; set; }
 
         [Parameter("Partial Close %", Group = "Trailing", DefaultValue = 50, MinValue = 0, MaxValue = 100)]
         public int PartialClosePct { get; set; }
 
-        [Parameter("Partial Close at R", Group = "Trailing", DefaultValue = 1.0, MinValue = 0.3, MaxValue = 5.0)]
+        [Parameter("Partial Close at R", Group = "Trailing", DefaultValue = 1.5, MinValue = 0.3, MaxValue = 5.0)]
         public double PartialCloseAtR { get; set; }
 
         // ── Regime / Signals ───────────────────────────────────────
@@ -125,10 +125,10 @@ namespace cAlgo.Robots
         [Parameter("Swing Lookback", Group = "Regime", DefaultValue = 5, MinValue = 2, MaxValue = 20)]
         public int SwingLookback { get; set; }
 
-        [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 8, MinValue = 1, MaxValue = 100)]
+        [Parameter("Signal Cooldown (bars)", Group = "Regime", DefaultValue = 5, MinValue = 1, MaxValue = 100)]
         public int SignalCooldownBars { get; set; }
 
-        [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.5, MinValue = 0.5, MaxValue = 10)]
+        [Parameter("Min Confluence", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
         public double MinConfluence { get; set; }
 
         [Parameter("MeanRev Min Confluence", Group = "Regime", DefaultValue = 2.0, MinValue = 0.5, MaxValue = 10)]
@@ -193,10 +193,13 @@ namespace cAlgo.Robots
                 _riskProfile.MaxConcurrentPositions = CustomMaxConcurrent;
             }
 
-            // Apply trailing params from UI
-            _riskProfile.BreakevenAtR = BreakevenAtR;
-            _riskProfile.PartialCloseFraction = PartialClosePct / 100.0;
-            _riskProfile.PartialCloseAtR = PartialCloseAtR;
+            // Apply trailing params from UI only for Custom profile
+            if (profileType == RiskProfileType.Custom)
+            {
+                _riskProfile.BreakevenAtR = BreakevenAtR;
+                _riskProfile.PartialCloseFraction = PartialClosePct / 100.0;
+                _riskProfile.PartialCloseAtR = PartialCloseAtR;
+            }
             _riskProfile.CooldownBars = SignalCooldownBars;
 
             // Resolve trail mode from integer parameter
@@ -401,12 +404,15 @@ namespace cAlgo.Robots
                 double nearSwingHigh = double.NaN;
                 if (_symbolContexts.TryGetValue(pos.SymbolName, out var ctx) && ctx.StructureState != null)
                 {
-                    foreach (var sp in ctx.StructureState.SwingLows)
+                    // Iterate from most recent to oldest to find NEAREST swing point
+                    for (int si = ctx.StructureState.SwingLows.Count - 1; si >= 0; si--)
                     {
+                        var sp = ctx.StructureState.SwingLows[si];
                         if (sp.Price < pos.EntryPrice) { nearSwingLow = sp.Price; break; }
                     }
-                    foreach (var sp in ctx.StructureState.SwingHighs)
+                    for (int si = ctx.StructureState.SwingHighs.Count - 1; si >= 0; si--)
                     {
+                        var sp = ctx.StructureState.SwingHighs[si];
                         if (sp.Price > pos.EntryPrice) { nearSwingHigh = sp.Price; break; }
                     }
                 }
@@ -433,7 +439,9 @@ namespace cAlgo.Robots
 
                 if (!double.IsNaN(action.NewStopLoss))
                 {
+                    #pragma warning disable CS0618
                     ModifyPosition(pos, action.NewStopLoss, pos.TakeProfit);
+                    #pragma warning restore CS0618
                     if (!string.IsNullOrEmpty(action.Reason) && !action.TriggerPartialClose)
                         Print("{0} {1}: SL -> {2:F5} ({3})", pos.SymbolName, pos.TradeType,
                             action.NewStopLoss, action.Reason);
@@ -489,7 +497,10 @@ namespace cAlgo.Robots
             ctx.DonchianCalc.Update(high, low);
             ctx.BollingerCalc.Update(close);
             ctx.RsiCalc.Update(close);
-            ctx.VolEngine.Update(atrVal, high, low, tickVol, ctx.Symbol.PipSize);
+            ctx.LastVolSnapshot = ctx.VolEngine.Update(atrVal, high, low, tickVol, ctx.Symbol.PipSize);
+
+            // Update Volume Profile with latest bar
+            ctx.VolumeProfileEngine.Update(ctx.Bars.OpenTimes[index], low, high, close, tickVol);
 
             if (ctx.StructureState == null)
                 ctx.StructureState = new MarketStructureState();
@@ -557,20 +568,36 @@ namespace cAlgo.Robots
             var state = ctx.StructureState;
             if (state == null) return null;
 
-            // Candle strength filter — reject indecisive bars
+            // Candle strength — used as confluence bonus, not hard gate
             double barRange = high - low;
             if (barRange <= 0) return null;
             double bodyRatio = (close - low) / barRange;  // 1.0 = close at high, 0.0 = close at low
 
+            // ── Volatility filter — skip extreme volatility ──
+            var volSnap = ctx.LastVolSnapshot;
+            if (volSnap != null && volSnap.Level == VolatilityLevel.Extreme)
+                return null;
+
+            // ── Volume Profile confluence data ──
+            VolumeProfileSnapshot vpSnap = null;
+            if (ctx.VolumeProfileEngine != null)
+            {
+                vpSnap = ctx.VolumeProfileEngine.BuildSnapshot(
+                    ctx.Bars.OpenTimes[index], 0.7, 0.2);
+            }
+
             // ── LONG ──
             if (regime.TrendDirection == StructureDirection.Bullish)
             {
-                // Require bullish candle: close in upper 40% of bar
-                if (bodyRatio < 0.6) return null;
-
                 bool recentBosUp = state.LastBreak != null
                     && state.LastBreak.Direction == StructureDirection.Bullish
-                    && state.LastBreak.BarIndex >= index - 3;
+                    && !state.LastBreak.IsChoCH
+                    && state.LastBreak.BarIndex >= index - 8;
+
+                bool recentChochUp = state.LastBreak != null
+                    && state.LastBreak.Direction == StructureDirection.Bullish
+                    && state.LastBreak.IsChoCH
+                    && state.LastBreak.BarIndex >= index - 8;
 
                 bool donchianBreakout = close >= ctx.DonchianCalc.UpperBand && ctx.DonchianCalc.IsReady;
 
@@ -582,11 +609,24 @@ namespace cAlgo.Robots
                         donchianBreakout = false; // not fresh, price was already above
                 }
 
-                if (!recentBosUp && !donchianBreakout) return null;
+                // Continuation entry: strong trend + price above mid + OB/FVG present
+                bool hasActiveZone = state.ActiveOrderBlocks.Exists(ob => !ob.Mitigated && ob.Direction == StructureDirection.Bullish)
+                    || state.ActiveFvgs.Exists(fvg => !fvg.Filled && fvg.Direction == StructureDirection.Bullish);
+                bool continuationEntry = regime.AdxValue >= 30
+                    && close > ctx.DonchianCalc.MidBand
+                    && ctx.DonchianCalc.IsReady
+                    && hasActiveZone;
+
+                if (!recentBosUp && !recentChochUp && !donchianBreakout && !continuationEntry) return null;
 
                 confluenceScore = 1.0;
                 if (recentBosUp) confluenceScore += 1.0;
+                if (recentChochUp) confluenceScore += 2.0;  // ChoCH is stronger signal
                 if (donchianBreakout) confluenceScore += 0.5;
+                if (continuationEntry) confluenceScore += 0.5;
+
+                // Candle strength bonus (not a gate)
+                if (bodyRatio > 0.7) confluenceScore += 0.5;
 
                 // Bullish order block (pullback into demand zone)
                 foreach (var ob in state.ActiveOrderBlocks)
@@ -608,15 +648,28 @@ namespace cAlgo.Robots
                     }
                 }
 
-                // Liquidity sweep below (stop hunt reversal)
+                // Liquidity sweep below (stop hunt reversal) — Bullish sweep = swept sellside, expect buy
                 foreach (var sweep in state.RecentSweeps)
                 {
-                    if (sweep.Direction != StructureDirection.Bullish && sweep.BarIndex >= index - 5)
+                    if (sweep.Direction == StructureDirection.Bullish && sweep.BarIndex >= index - 5)
                     {
                         confluenceScore += 1.5;
                         break;
                     }
                 }
+
+                // Volume Profile confluence
+                if (vpSnap != null && vpSnap.HasData)
+                {
+                    if (vpSnap.IsNearAnyNode(vpSnap.HvnPrices, close, atrPips * ctx.Symbol.PipSize * 0.5))
+                        confluenceScore += 0.5; // near institutional volume node
+                    if (vpSnap.IsNearAnyNode(vpSnap.LvnPrices, close, atrPips * ctx.Symbol.PipSize * 0.5))
+                        confluenceScore += 0.5; // LVN breakout zone
+                }
+
+                // Volatility bonus for clean setups
+                if (volSnap != null && volSnap.Level == VolatilityLevel.Normal)
+                    confluenceScore += 0.3;
 
                 confluenceScore += Math.Min(1.0, regime.AdxValue / 50.0);
 
@@ -627,12 +680,15 @@ namespace cAlgo.Robots
             // ── SHORT ──
             if (regime.TrendDirection == StructureDirection.Bearish)
             {
-                // Require bearish candle: close in lower 40% of bar
-                if (bodyRatio > 0.4) return null;
-
                 bool recentBosDown = state.LastBreak != null
                     && state.LastBreak.Direction == StructureDirection.Bearish
-                    && state.LastBreak.BarIndex >= index - 3;
+                    && !state.LastBreak.IsChoCH
+                    && state.LastBreak.BarIndex >= index - 8;
+
+                bool recentChochDown = state.LastBreak != null
+                    && state.LastBreak.Direction == StructureDirection.Bearish
+                    && state.LastBreak.IsChoCH
+                    && state.LastBreak.BarIndex >= index - 8;
 
                 bool donchianBreakdown = close <= ctx.DonchianCalc.LowerBand && ctx.DonchianCalc.IsReady;
 
@@ -644,11 +700,24 @@ namespace cAlgo.Robots
                         donchianBreakdown = false; // not fresh
                 }
 
-                if (!recentBosDown && !donchianBreakdown) return null;
+                // Continuation entry: strong trend + price below mid + OB/FVG present
+                bool hasActiveZoneShort = state.ActiveOrderBlocks.Exists(ob => !ob.Mitigated && ob.Direction == StructureDirection.Bearish)
+                    || state.ActiveFvgs.Exists(fvg => !fvg.Filled && fvg.Direction == StructureDirection.Bearish);
+                bool continuationEntryShort = regime.AdxValue >= 30
+                    && close < ctx.DonchianCalc.MidBand
+                    && ctx.DonchianCalc.IsReady
+                    && hasActiveZoneShort;
+
+                if (!recentBosDown && !recentChochDown && !donchianBreakdown && !continuationEntryShort) return null;
 
                 confluenceScore = 1.0;
                 if (recentBosDown) confluenceScore += 1.0;
+                if (recentChochDown) confluenceScore += 2.0;  // ChoCH is stronger signal
                 if (donchianBreakdown) confluenceScore += 0.5;
+                if (continuationEntryShort) confluenceScore += 0.5;
+
+                // Candle strength bonus (not a gate)
+                if (bodyRatio < 0.3) confluenceScore += 0.5;
 
                 foreach (var ob in state.ActiveOrderBlocks)
                 {
@@ -668,14 +737,28 @@ namespace cAlgo.Robots
                     }
                 }
 
+                // Liquidity sweep above (stop hunt reversal) — Bearish sweep = swept buyside, expect sell
                 foreach (var sweep in state.RecentSweeps)
                 {
-                    if (sweep.Direction == StructureDirection.Bullish && sweep.BarIndex >= index - 5)
+                    if (sweep.Direction == StructureDirection.Bearish && sweep.BarIndex >= index - 5)
                     {
                         confluenceScore += 1.5;
                         break;
                     }
                 }
+
+                // Volume Profile confluence
+                if (vpSnap != null && vpSnap.HasData)
+                {
+                    if (vpSnap.IsNearAnyNode(vpSnap.HvnPrices, close, atrPips * ctx.Symbol.PipSize * 0.5))
+                        confluenceScore += 0.5;
+                    if (vpSnap.IsNearAnyNode(vpSnap.LvnPrices, close, atrPips * ctx.Symbol.PipSize * 0.5))
+                        confluenceScore += 0.5;
+                }
+
+                // Volatility bonus for clean setups
+                if (volSnap != null && volSnap.Level == VolatilityLevel.Normal)
+                    confluenceScore += 0.3;
 
                 confluenceScore += Math.Min(1.0, regime.AdxValue / 50.0);
 
@@ -687,8 +770,8 @@ namespace cAlgo.Robots
         }
 
         /// <summary>
-        /// Mean Reversion: Bollinger Band extremes + RSI + optional OB support.
-        /// Active only in ranging markets (ADX &lt; 20).
+        /// Mean Reversion: Bollinger Band extremes + RSI + OB/VP support.
+        /// Active in ranging markets (ADX &lt; 25).
         /// </summary>
         private TradeType? EvaluateMeanReversionSignal(
             SymbolContext ctx, AdaptiveRegimeState regime,
@@ -697,7 +780,21 @@ namespace cAlgo.Robots
             confluenceScore = 0;
             if (!ctx.BollingerCalc.IsReady) return null;
 
+            // Skip extreme volatility for mean reversion too
+            var volSnap = ctx.LastVolSnapshot;
+            if (volSnap != null && volSnap.Level == VolatilityLevel.Extreme)
+                return null;
+
             double rsi = ctx.RsiCalc.Value;
+
+            // Volume Profile data for confluence
+            VolumeProfileSnapshot vpSnap = null;
+            if (ctx.VolumeProfileEngine != null)
+                vpSnap = ctx.VolumeProfileEngine.BuildSnapshot(ctx.Bars.OpenTimes[index], 0.7, 0.2);
+
+            double atrVal = ctx.Atr != null ? ctx.Atr.Result[index] : 0;
+            if (double.IsNaN(atrVal)) atrVal = 0;
+            double tolerance = atrVal > 0 ? atrVal * 0.5 : ctx.Symbol.PipSize * 10;
 
             // LONG: price at/below lower BB + RSI oversold
             if (close <= ctx.BollingerCalc.LowerBand && rsi < 35)
@@ -718,6 +815,17 @@ namespace cAlgo.Robots
                         }
                     }
                 }
+
+                // VP confluence: near HVN = strong support for mean reversion
+                if (vpSnap != null && vpSnap.HasData)
+                {
+                    if (vpSnap.IsNearAnyNode(vpSnap.HvnPrices, close, tolerance))
+                        confluenceScore += 0.5;
+                }
+
+                // Volatility bonus
+                if (volSnap != null && volSnap.Level == VolatilityLevel.Normal)
+                    confluenceScore += 0.3;
 
                 if (confluenceScore < MeanRevMinConfluence) return null;
                 return TradeType.Buy;
@@ -742,6 +850,17 @@ namespace cAlgo.Robots
                         }
                     }
                 }
+
+                // VP confluence: near HVN = strong resistance for mean reversion
+                if (vpSnap != null && vpSnap.HasData)
+                {
+                    if (vpSnap.IsNearAnyNode(vpSnap.HvnPrices, close, tolerance))
+                        confluenceScore += 0.5;
+                }
+
+                // Volatility bonus
+                if (volSnap != null && volSnap.Level == VolatilityLevel.Normal)
+                    confluenceScore += 0.3;
 
                 if (confluenceScore < MeanRevMinConfluence) return null;
                 return TradeType.Sell;
@@ -796,6 +915,12 @@ namespace cAlgo.Robots
             double slMult = candidate.Strategy == StrategyMode.MeanReversion
                 ? MeanRevSlAtrMult : SlAtrMultiplier;
             double slPips = candidate.AtrPips * slMult * _riskProfile.SlMultiplier;
+
+            // Apply volatility-adaptive SL sizing
+            var volSnap = ctx.LastVolSnapshot;
+            if (volSnap != null)
+                slPips *= volSnap.Multiplier;
+
             slPips = Math.Max(MinSlPips, Math.Min(MaxSlPips, slPips));
 
             double tpPips;
@@ -1074,6 +1199,8 @@ namespace cAlgo.Robots
                 BollingerCalc = new BollingerCalculator(BollingerPeriod, BollingerStdDev),
                 RsiCalc = new RsiCalculator(RsiPeriod),
                 VolEngine = new VolatilityEngine(AtrPeriod),
+                VolumeProfileEngine = new SessionVolumeProfileEngine(
+                    symbol.PipSize * 10, true, true, true, 18),
                 StructureState = new MarketStructureState(),
                 LifecycleState = new SignalLifecycleState(),
                 LifecycleRule = new SignalLifecycleRule
@@ -1106,7 +1233,12 @@ namespace cAlgo.Robots
 
                 double atr = ctx.Atr.Result[i];
                 if (!double.IsNaN(atr) && atr > 0)
-                    ctx.VolEngine.Update(atr, bars.HighPrices[i], bars.LowPrices[i], bars.TickVolumes[i], symbol.PipSize);
+                    ctx.LastVolSnapshot = ctx.VolEngine.Update(atr, bars.HighPrices[i], bars.LowPrices[i], bars.TickVolumes[i], symbol.PipSize);
+
+                // Warm up Volume Profile engine
+                ctx.VolumeProfileEngine.Update(
+                    bars.OpenTimes[i], bars.LowPrices[i], bars.HighPrices[i],
+                    bars.ClosePrices[i], bars.TickVolumes[i]);
 
                 MarketStructureEngine.Update(
                     ctx.StructureState, i,
@@ -1139,6 +1271,10 @@ namespace cAlgo.Robots
             public RsiCalculator RsiCalc { get; set; }
             public VolatilityEngine VolEngine { get; set; }
             public MarketStructureState StructureState { get; set; }
+
+            // Volume Profile & Volatility
+            public SessionVolumeProfileEngine VolumeProfileEngine { get; set; }
+            public VolatilitySnapshot LastVolSnapshot { get; set; }
 
             // Lifecycle
             public SignalLifecycleState LifecycleState { get; set; }

@@ -22,6 +22,10 @@
     <Compile Include="..\ApexFlowSMC\RiskProfileEngine.cs" Link="RiskProfileEngine.cs" />
     <Compile Include="..\ApexFlowSMC\TrailingStopEngine.cs" Link="TrailingStopEngine.cs" />
     <Compile Include="..\ApexFlowSMC\ResultsExporter.cs" Link="ResultsExporter.cs" />
+    <Compile Include="..\ApexFlowSMC\SessionVolumeProfile.cs" Link="SessionVolumeProfile.cs" />
+    <Compile Include="..\ApexFlowSMC\LevelScoringEngine.cs" Link="LevelScoringEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\SignalReliabilityEngine.cs" Link="SignalReliabilityEngine.cs" />
+    <Compile Include="..\ApexFlowSMC\SignalOutcomeTracker.cs" Link="SignalOutcomeTracker.cs" />
   </ItemGroup>
 
   <Target Name="PostBuildDeployRobotArtifacts" AfterTargets="_AlgoBuildAfterBuild">

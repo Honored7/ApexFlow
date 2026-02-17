@@ -376,12 +376,12 @@ namespace cAlgo.Indicators
                 regime = AdaptiveRegime.Choppy;
                 strategy = StrategyMode.NoTrade;
             }
-            else if (adxValue < 20)
+            else if (adxValue < 25)
             {
                 regime = AdaptiveRegime.Range;
                 strategy = StrategyMode.MeanReversion;
             }
-            else if (adxValue < 30)
+            else if (adxValue < 35)
             {
                 regime = AdaptiveRegime.Trend;
                 strategy = StrategyMode.TrendFollowing;
