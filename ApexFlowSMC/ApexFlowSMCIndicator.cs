@@ -54,10 +54,10 @@ namespace cAlgo.Indicators
         [Parameter("Bubble Lookback", Group = "Order Flow", DefaultValue = 20, MinValue = 5, MaxValue = 100)]
         public int BubbleLookback { get; set; }
 
-        [Parameter("Aggression Threshold", Group = "Order Flow", DefaultValue = 1.8, MinValue = 1.1, MaxValue = 5.0)]
+        [Parameter("Aggression Threshold", Group = "Order Flow", DefaultValue = 1.2, MinValue = 0.5, MaxValue = 5.0)]
         public double AggressionThreshold { get; set; }
 
-        [Parameter("Min Volume Mult", Group = "Order Flow", DefaultValue = 1.5, MinValue = 1.0, MaxValue = 5.0)]
+        [Parameter("Min Volume Mult", Group = "Order Flow", DefaultValue = 1.2, MinValue = 1.0, MaxValue = 5.0)]
         public double MinBubbleVolumeMult { get; set; }
 
         [Parameter("Max Bubbles Visible", Group = "Order Flow", DefaultValue = 40, MinValue = 5, MaxValue = 200)]
@@ -125,6 +125,17 @@ namespace cAlgo.Indicators
 
         [Parameter("Signal Cooldown (bars)", Group = "Signals", DefaultValue = 6, MinValue = 1, MaxValue = 50)]
         public int SignalCooldownBars { get; set; }
+
+        // ── Key Levels ──
+        [Parameter("Show Prev Day H/L", Group = "Key Levels", DefaultValue = true)]
+        public bool ShowPrevDayHL { get; set; }
+
+        [Parameter("Show Session Kill Zones", Group = "Key Levels", DefaultValue = true)]
+        public bool ShowSessionKillZones { get; set; }
+
+        // ── Alerts ──
+        [Parameter("Sound Alert on Signal", Group = "Alerts", DefaultValue = true)]
+        public bool AlertOnSignal { get; set; }
 
         // ── Info Panel ──
         [Parameter("Show Info Panel", Group = "Display", DefaultValue = true)]
@@ -196,6 +207,18 @@ namespace cAlgo.Indicators
         // Info panel
         private string _infoPanelName;
 
+        // ATR for adaptive Y offsets
+        private double _atr;
+
+        // Previous day H/L
+        private double _prevDayHigh = double.NaN;
+        private double _prevDayLow = double.NaN;
+        private DateTime _lastDayDate = DateTime.MinValue;
+        private double _todayHigh;
+        private double _todayLow = double.MaxValue;
+        private string _prevDayHighName;
+        private string _prevDayLowName;
+
         // ═══════════════════════════════════════════════════════════════
         //  LIFECYCLE
         // ═══════════════════════════════════════════════════════════════
@@ -226,6 +249,17 @@ namespace cAlgo.Indicators
             _donchianCalc.Update(high, low);
             _bollingerCalc.Update(close);
             _rsiCalc.Update(close);
+
+            // ── ATR (14-period simple) for adaptive offsets ──
+            UpdateAtr(index, 14);
+
+            // ── Previous Day High/Low ──
+            if (ShowPrevDayHL)
+                UpdatePrevDayHL(index);
+
+            // ── Session Kill Zone markers ──
+            if (ShowSessionKillZones)
+                UpdateSessionKillZones(index);
 
             // ── Donchian output ──
             if (ShowDonchian && _donchianCalc.IsReady)
@@ -529,21 +563,19 @@ namespace cAlgo.Indicators
             }
 
             // ── Absorption: price barely moved but volume spiked ──
-            bool isAbsorption = ShowAbsorption && volumeRatio > 2.0 && bodyRatio < 0.3;
+            bool isAbsorption = ShowAbsorption && volumeRatio > 1.8 && bodyRatio < 0.35;
 
             // ── Exhaustion: long wick against direction + high volume ──
             bool isExhaustionTop = ShowExhaustion && isBullish
-                && (upperWick / range > 0.5) && volumeRatio > 1.5;
+                && (upperWick / range > 0.45) && volumeRatio > 1.3;
             bool isExhaustionBottom = ShowExhaustion && !isBullish
-                && (lowerWick / range > 0.5) && volumeRatio > 1.5;
+                && (lowerWick / range > 0.45) && volumeRatio > 1.3;
 
-            // ── Gate: only show significant events ──
-            bool showBubble = aggressionScore >= AggressionThreshold
-                           || isAbsorption
-                           || isExhaustionTop
-                           || isExhaustionBottom;
+            // ── Gate: show if any condition met AND volume is above min ──
+            bool isAggressive = aggressionScore >= AggressionThreshold && volumeRatio >= MinBubbleVolumeMult;
+            bool showBubble = isAggressive || isAbsorption || isExhaustionTop || isExhaustionBottom;
 
-            if (!showBubble || volumeRatio < MinBubbleVolumeMult)
+            if (!showBubble)
                 return;
 
             // ── Classify bubble ──
@@ -552,6 +584,10 @@ namespace cAlgo.Indicators
             string bubbleText;
             double bubbleY;
             int fontSize;
+
+            // Use ATR for adaptive Y spacing (works across all instruments)
+            double offset = _atr > 0 ? _atr * 0.3 : range * 2;
+            double offsetSmall = _atr > 0 ? _atr * 0.15 : range;
 
             if (isAbsorption)
             {
@@ -566,7 +602,7 @@ namespace cAlgo.Indicators
                 bubbleType = FlowBubbleType.Exhaustion;
                 bubbleColor = Color.FromArgb(220, 255, 69, 0);
                 bubbleText = "◉ EXH";
-                bubbleY = high + pipSize * 4;
+                bubbleY = high + offset;
                 fontSize = Math.Min(13, 8 + (int)(volumeRatio));
             }
             else if (isExhaustionBottom)
@@ -574,7 +610,7 @@ namespace cAlgo.Indicators
                 bubbleType = FlowBubbleType.Exhaustion;
                 bubbleColor = Color.FromArgb(220, 50, 205, 50);
                 bubbleText = "◉ EXH";
-                bubbleY = low - pipSize * 4;
+                bubbleY = low - offset;
                 fontSize = Math.Min(13, 8 + (int)(volumeRatio));
             }
             else if (isBullish)
@@ -584,7 +620,7 @@ namespace cAlgo.Indicators
                 int a = Math.Min(255, 150 + (int)(aggressionScore * 20));
                 bubbleColor = Color.FromArgb(a, 0, g, 0);
                 bubbleText = GetBubbleDot(aggressionScore);
-                bubbleY = low - pipSize * 3;
+                bubbleY = low - offsetSmall;
                 fontSize = Math.Min(16, 8 + (int)(aggressionScore * 2));
             }
             else
@@ -594,7 +630,7 @@ namespace cAlgo.Indicators
                 int a = Math.Min(255, 150 + (int)(aggressionScore * 20));
                 bubbleColor = Color.FromArgb(a, r, 0, 0);
                 bubbleText = GetBubbleDot(aggressionScore);
-                bubbleY = high + pipSize * 3;
+                bubbleY = high + offsetSmall;
                 fontSize = Math.Min(16, 8 + (int)(aggressionScore * 2));
             }
 
@@ -609,9 +645,10 @@ namespace cAlgo.Indicators
             // Volume ratio label
             string volName = name + "_V";
             string volText = volumeRatio.ToString("F1") + "x";
+            double volLabelOffset = _atr > 0 ? _atr * 0.2 : range;
             double volY = isBullish || isExhaustionBottom
-                ? bubbleY - pipSize * 6
-                : bubbleY + pipSize * 6;
+                ? bubbleY - volLabelOffset
+                : bubbleY + volLabelOffset;
             var volLbl = Chart.DrawText(volName, volText, Bars.OpenTimes[index], volY,
                 Color.FromArgb(160, 180, 180, 180));
             volLbl.FontSize = 6;
@@ -861,21 +898,22 @@ namespace cAlgo.Indicators
 
         private void DrawSignalArrow(int index, bool isBuy, double score)
         {
-            double pipSize = Symbol.PipSize;
             string name = "Sig_" + index + "_" + (isBuy ? "B" : "S");
+            double offset = _atr > 0 ? _atr * 0.8 : Symbol.PipSize * 30;
+            double labelOffset = _atr > 0 ? _atr * 0.35 : Symbol.PipSize * 10;
             double y;
             Color color;
             ChartIconType icon;
 
             if (isBuy)
             {
-                y = Bars.LowPrices[index] - pipSize * 30;
+                y = Bars.LowPrices[index] - offset;
                 color = Color.FromArgb(255, 0, 230, 120);
                 icon = ChartIconType.UpTriangle;
             }
             else
             {
-                y = Bars.HighPrices[index] + pipSize * 30;
+                y = Bars.HighPrices[index] + offset;
                 color = Color.FromArgb(255, 230, 50, 50);
                 icon = ChartIconType.DownTriangle;
             }
@@ -885,13 +923,22 @@ namespace cAlgo.Indicators
 
             // Score label
             string lblName = name + "_SC";
-            double lblY = isBuy ? y - pipSize * 10 : y + pipSize * 10;
+            double lblY = isBuy ? y - labelOffset : y + labelOffset;
             var lbl = Chart.DrawText(lblName, score.ToString("F1") + "★",
                 Bars.OpenTimes[index], lblY, color);
             lbl.FontSize = 8;
             lbl.IsBold = true;
             lbl.HorizontalAlignment = HorizontalAlignment.Center;
             _signalNames.Add(lblName);
+
+            // Sound alert on live bar
+            if (AlertOnSignal && IsLastBar)
+            {
+                string direction = isBuy ? "BUY" : "SELL";
+                Notifications.PlaySound("C:\\Windows\\Media\\notify.wav");
+                Print("[ApexFlow Signal] " + direction + " | Score: " + score.ToString("F1")
+                    + " | Price: " + Bars.ClosePrices[index].ToString("F5"));
+            }
 
             // Cleanup old signals
             while (_signalNames.Count > 60)
@@ -1059,6 +1106,125 @@ namespace cAlgo.Indicators
                 VerticalAlignment.Top, HorizontalAlignment.Left,
                 Color.FromArgb(200, 220, 220, 220));
             panel.FontSize = 9;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  ATR CALCULATOR (simple 14-period for adaptive offsets)
+        // ═══════════════════════════════════════════════════════════════
+
+        private void UpdateAtr(int index, int period)
+        {
+            if (index < period + 1) return;
+
+            double sum = 0;
+            for (int i = index - period + 1; i <= index; i++)
+            {
+                double h = Bars.HighPrices[i];
+                double l = Bars.LowPrices[i];
+                double pc = Bars.ClosePrices[i - 1];
+                double tr = Math.Max(h - l, Math.Max(Math.Abs(h - pc), Math.Abs(l - pc)));
+                sum += tr;
+            }
+            _atr = sum / period;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  PREVIOUS DAY HIGH / LOW
+        // ═══════════════════════════════════════════════════════════════
+
+        private void UpdatePrevDayHL(int index)
+        {
+            var barDate = Bars.OpenTimes[index].Date;
+
+            if (barDate != _lastDayDate)
+            {
+                // New day — archive yesterday's range
+                if (_lastDayDate != DateTime.MinValue && _todayHigh > 0)
+                {
+                    _prevDayHigh = _todayHigh;
+                    _prevDayLow = _todayLow;
+                }
+                _lastDayDate = barDate;
+                _todayHigh = Bars.HighPrices[index];
+                _todayLow = Bars.LowPrices[index];
+            }
+            else
+            {
+                if (Bars.HighPrices[index] > _todayHigh) _todayHigh = Bars.HighPrices[index];
+                if (Bars.LowPrices[index] < _todayLow) _todayLow = Bars.LowPrices[index];
+            }
+
+            // Draw only on last bar
+            if (IsLastBar && !double.IsNaN(_prevDayHigh))
+            {
+                if (_prevDayHighName != null) Chart.RemoveObject(_prevDayHighName);
+                if (_prevDayLowName != null) Chart.RemoveObject(_prevDayLowName);
+
+                _prevDayHighName = "PDH";
+                _prevDayLowName = "PDL";
+
+                var pdh = Chart.DrawHorizontalLine(_prevDayHighName, _prevDayHigh,
+                    Color.FromArgb(180, 255, 165, 0), 2, LineStyle.Lines);
+                var pdl = Chart.DrawHorizontalLine(_prevDayLowName, _prevDayLow,
+                    Color.FromArgb(180, 100, 149, 237), 2, LineStyle.Lines);
+
+                // Labels
+                string pdhLbl = _prevDayHighName + "_L";
+                string pdlLbl = _prevDayLowName + "_L";
+                Chart.RemoveObject(pdhLbl);
+                Chart.RemoveObject(pdlLbl);
+
+                var hl = Chart.DrawText(pdhLbl, "PDH " + _prevDayHigh.ToString("F2"),
+                    Bars.OpenTimes[index], _prevDayHigh, Color.FromArgb(220, 255, 165, 0));
+                hl.FontSize = 7;
+                hl.IsBold = true;
+
+                var ll = Chart.DrawText(pdlLbl, "PDL " + _prevDayLow.ToString("F2"),
+                    Bars.OpenTimes[index], _prevDayLow, Color.FromArgb(220, 100, 149, 237));
+                ll.FontSize = 7;
+                ll.IsBold = true;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  SESSION KILL ZONE MARKERS
+        // ═══════════════════════════════════════════════════════════════
+
+        private void UpdateSessionKillZones(int index)
+        {
+            if (index < 2) return;
+
+            var prevTime = Bars.OpenTimes[index - 1];
+            var curTime = Bars.OpenTimes[index];
+            int prevHour = prevTime.Hour;
+            int curHour = curTime.Hour;
+
+            // Detect session open crossings (UTC hours)
+            // London Open: 07:00, NY Open: 13:00, Asia Open: 22:00
+            TryDrawSessionLine(prevHour, curHour, 7, curTime, index, "London Open",
+                Color.FromArgb(60, 0, 200, 255));
+            TryDrawSessionLine(prevHour, curHour, 13, curTime, index, "NY Open",
+                Color.FromArgb(60, 255, 165, 0));
+            TryDrawSessionLine(prevHour, curHour, 22, curTime, index, "Asia Open",
+                Color.FromArgb(60, 180, 0, 255));
+        }
+
+        private void TryDrawSessionLine(int prevHour, int curHour, int targetHour,
+            DateTime curTime, int index, string label, Color color)
+        {
+            // Check if we crossed the target hour boundary
+            bool crossed = (prevHour < targetHour && curHour >= targetHour)
+                        || (targetHour == 22 && prevHour < 22 && curHour >= 22);
+            if (!crossed) return;
+
+            string name = "KZ_" + label.Replace(" ", "") + "_" + curTime.Date.ToString("yyyyMMdd");
+            var line = Chart.DrawVerticalLine(name, curTime,
+                color, 1, LineStyle.DotsRare);
+
+            string lblName = name + "_L";
+            double lblY = Bars.HighPrices[index] + (_atr > 0 ? _atr * 0.5 : Symbol.PipSize * 20);
+            var lbl = Chart.DrawText(lblName, label, curTime, lblY, color);
+            lbl.FontSize = 7;
         }
 
         // ═══════════════════════════════════════════════════════════════
